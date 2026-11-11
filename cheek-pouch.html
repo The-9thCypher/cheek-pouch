@@ -185,6 +185,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 .board .lv { color: var(--muted); }
 .board .sc { color: var(--seed); font-weight: 600; }
 .board li.empty { display: block; color: var(--muted); background: none; padding: 0; }
+#signBtn { justify-self: start; }
 .row { display: flex; gap: 8px; }
 .inp { flex: 1 1 auto; min-width: 0; font-family: var(--mono); font-size: 13px; background: var(--soil); color: var(--cream); border: 1px solid var(--soil-3); border-radius: 8px; padding: 6px 10px; }
 .inp:focus-visible { outline: 2px solid var(--wheel); outline-offset: 1px; }
@@ -267,6 +268,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
           <label class="sr" for="nick">Your name on the board</label>
           <input class="inp" id="nick" type="text" maxlength="16" placeholder="Your name on the board" autocomplete="off">
         </div>
+        <button type="button" class="small" id="signBtn" hidden>Sign in with wallet</button>
         <p class="src" id="boardNote">Your best run is posted when it beats your last one.</p>
       </div>
 
@@ -277,7 +279,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
           <input class="inp" id="walletIn" type="text" placeholder="0x… wallet address" spellcheck="false" autocomplete="off">
           <button type="button" class="small" id="walletBtn">Check</button>
         </div>
-        <button type="button" class="small" id="connectBtn" hidden>Use my connected wallet</button>
         <ul class="perks" id="perks">
           <li data-perk="crown" title="Hold 1+ Squeek"><b>Crown</b>Hold 1+</li>
           <li data-perk="shades" title="Stake 1+ Squeek"><b>Shades</b>Stake 1+</li>
@@ -430,16 +431,123 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   }
   $('walletBtn').onclick = () => checkWallet(walletIn.value);
   walletIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopPropagation(); checkWallet(walletIn.value); } });
-  if (window.ethereum && window.ethereum.request) {
-    const cb = $('connectBtn'); cb.hidden = false;
-    cb.onclick = async () => {
-      try {
-        const accts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accts && accts[0]) { walletIn.value = accts[0]; checkWallet(accts[0]); }
-      } catch (e) { walletNote.textContent = 'The wallet did not share an address. You can paste it instead.'; }
-    };
-  }
   try { const saved = localStorage.getItem('cheekpouch.wallet'); if (saved) { walletIn.value = saved; checkWallet(saved); } } catch (e) {}
+
+  // ---------- wallet sign-in and saved progress (on cheek-pouch.live) ----------
+  // Sign-in is a free EIP-4361 message signature: no gas, no transaction.
+  const API_URL = 'https://cheek-pouch-api.cheek-pouch-api.workers.dev';
+  let walletMode = false, session = null, player = null, runId = null;
+  try { const saved = JSON.parse(localStorage.getItem('cheekpouch.session') || 'null'); if (saved && saved.token) session = saved; } catch (e) {}
+  const signBtn = $('signBtn');
+  const shortAddr = a => a.slice(0, 6) + '…' + a.slice(-4);
+
+  async function api(path, { method = 'GET', body } = {}) {
+    const r = await fetch(API_URL + path, {
+      method, body: body ? JSON.stringify(body) : undefined,
+      headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: 'Bearer ' + session.token } : {}) }
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401 && session && !path.startsWith('/auth/')) setSession(null);
+    if (!r.ok) throw Object.assign(new Error(d.message || 'The server did not answer.'), { code: d.error, status: r.status });
+    return d;
+  }
+  function setSession(s) {
+    session = s; if (!s) player = null;
+    try { s ? localStorage.setItem('cheekpouch.session', JSON.stringify({ token: s.token })) : localStorage.removeItem('cheekpouch.session'); } catch (e) {}
+    renderWallet();
+  }
+  function applyPlayer(p) {
+    player = p;
+    perks = { ...p.perks }; renderPerks();
+    walletIn.value = p.address;
+    walletNote.textContent = p.squeeks ? `Your wallet: ${p.squeeks} Squeek${p.squeeks === 1 ? '' : 's'}, ${p.staked} staked, highest level ${p.topLevel}.` : 'Your wallet holds no Squeeks yet. Perks unlock once it does.';
+    if (p.nick && document.activeElement !== nickIn) nickIn.value = p.nick;
+    if (p.bestScore > best) saveBest(p.bestScore);
+    renderWallet();
+  }
+  function renderWallet() {
+    if (!walletMode) return;
+    signBtn.hidden = false;
+    if (session && player) {
+      signBtn.textContent = 'Sign out';
+      boardNote.textContent = `Signed in as ${shortAddr(player.address)}. Best ${player.bestScore}, ${player.runs} run${player.runs === 1 ? '' : 's'} saved.`;
+    } else if (window.ethereum && window.ethereum.request) {
+      signBtn.textContent = 'Sign in with wallet';
+      boardNote.textContent = 'Sign in to save your progress to your wallet and join the board. Free, no transaction.';
+    } else {
+      signBtn.hidden = true;
+      boardNote.textContent = 'To save progress, open cheek-pouch.live in your wallet app\'s browser (MetaMask, Coinbase Wallet, Rainbow…) and sign in.';
+    }
+  }
+  async function signIn() {
+    try {
+      boardNote.textContent = 'Check your wallet…';
+      const [addr] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const { message } = await api('/auth/nonce', { method: 'POST', body: { address: addr } });
+      const hexMsg = '0x' + [...new TextEncoder().encode(message)].map(b => b.toString(16).padStart(2, '0')).join('');
+      const signature = await window.ethereum.request({ method: 'personal_sign', params: [hexMsg, addr] });
+      const d = await api('/auth/verify', { method: 'POST', body: { message, signature } });
+      setSession({ token: d.token });
+      applyPlayer(d.player);
+      const typed = nickIn.value.trim();
+      if (typed && typed !== d.player.nick) saveNick(typed);
+      loadWalletBoard();
+    } catch (e) {
+      renderWallet();
+      boardNote.textContent = e && e.code === 4001 ? 'Sign-in cancelled in your wallet.' : (e && e.message) || 'Sign-in failed. Try again.';
+    }
+  }
+  signBtn.onclick = () => {
+    if (session) { api('/auth/logout', { method: 'POST' }).catch(() => {}); setSession(null); return; }
+    signIn();
+  };
+  async function saveNick(nick) {
+    try { applyPlayer((await api('/me', { method: 'PATCH', body: { nick } })).player); loadWalletBoard(); } catch (e) {}
+  }
+  async function loadWalletBoard() {
+    try {
+      const { players } = await api('/leaderboard');
+      if (!players.length) { boardMsg('No runs saved yet. Sign in and be the first!'); return; }
+      boardEl.innerHTML = '';
+      players.slice(0, 10).forEach((v, i) => {
+        const li = document.createElement('li');
+        if (player && v.id === player.address) li.className = 'me';
+        const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
+        const nm = document.createElement('span'); nm.className = 'nm';
+        if (v.holder) { const c = document.createElement('i'); c.textContent = '♛ '; c.title = 'Squeek holder'; nm.appendChild(c); }
+        nm.appendChild(document.createTextNode(v.nick || v.address));
+        nm.title = v.address;
+        const lv = document.createElement('span'); lv.className = 'lv'; lv.textContent = 'L' + v.bestLevel;
+        const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = v.bestScore;
+        li.append(rk, nm, lv, sc);
+        boardEl.appendChild(li);
+      });
+    } catch (e) { boardMsg('The board could not be loaded right now.'); }
+  }
+  async function initWallet() {
+    walletMode = true;
+    renderWallet();
+    loadWalletBoard();
+    setInterval(loadWalletBoard, 60000);
+    if (session) {
+      try { applyPlayer((await api('/me')).player); } catch (e) { if (e.status === 401) setSession(null); }
+    }
+  }
+  function startWalletRun() {
+    runId = null;
+    if (walletMode && session) api('/runs', { method: 'POST' }).then(d => { runId = d.runId; }).catch(() => {});
+  }
+  async function finishWalletRun(final) {
+    if (!session) return 'Sign in with your wallet to save runs and join the board.';
+    if (!runId) return 'This run could not be saved. Check your connection.';
+    try {
+      const d = await api(`/runs/${runId}/finish`, { method: 'POST', body: { score: final, level } });
+      runId = null;
+      applyPlayer(d.player);
+      loadWalletBoard();
+      return d.isBest ? `Saved to your wallet. New personal best, you're #${d.rank}!` : `Saved to your wallet. You're #${d.rank} on the board.`;
+    } catch (e) { return e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
+  }
 
   // ---------- shared leaderboard (artifact db) ----------
   let db = null, uid = null, myBest = null, canPost = true;
@@ -466,7 +574,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   async function initBoard() {
     const cl = window.claude;
     // off claude.ai (or signed out) there is no shared store, so drop the card entirely
-    if (!cl || typeof cl.use !== 'function') { $('boardBox').hidden = true; return; }
+    if (!cl || typeof cl.use !== 'function') { initWallet(); return; }
     const [d, u] = await Promise.all([cl.use('db'), cl.use('user')]);
     if (!d) { $('boardBox').hidden = true; return; }
     db = d;
@@ -482,6 +590,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     }
   }
   async function postScore(final, secs) {
+    if (walletMode) return finishWalletRun(final);
     if (!db || !uid || !canPost) return '';
     if (myBest && (Number(myBest.score) || 0) >= final) return `Your posted best is still ${myBest.score}.`;
     const row = { score: final, level, secs: Math.round(secs), nick: nickIn.value.trim().slice(0, 16) || 'A hamster', holder: !!perks.crown, at: Date.now() };
@@ -497,6 +606,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     clearTimeout(nickTimer);
     nickTimer = setTimeout(async () => {
       const nick = nickIn.value.trim().slice(0, 16) || 'A hamster';
+      if (walletMode) { if (session && player && player.nick !== nick) saveNick(nick); return; }
       if (db && uid && canPost && myBest && myBest.nick !== nick) {
         try { await db.doc('scores/' + uid).update({ nick }); myBest = { ...myBest, nick }; } catch (e) {}
       }
@@ -808,6 +918,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     callOdds = oddsNow();
     if (!live.ok || !live.fresh) call = 'none';
     audio();
+    startWalletRun();
     state = 'play';
     overlay.hidden = true;
     last = performance.now();

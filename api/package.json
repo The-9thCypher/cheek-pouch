@@ -1,0 +1,15 @@
+{
+  "name": "cheek-pouch-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "viem": "2.57.12"
+  },
+  "devDependencies": {
+    "wrangler": "4.153.0"
+  }
+}
