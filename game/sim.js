@@ -229,6 +229,7 @@ const SIM = (() => {
         }
         if (!it.landed && it.y >= GROUND - 6) {
           if (!good) { emit({ type: 'land', x: it.x }); s.items.splice(i, 1); continue; }
+          if (it.kind !== 'power') emit({ type: 'drop', x: it.x });
           it.landed = true; it.y = GROUND - 6; it.rot = 1.5708 + (r() - .5) * .6; it.ttl = 4;
         }
         if (it.landed) { it.ttl -= DT; if (it.ttl <= 0) s.items.splice(i, 1); }
