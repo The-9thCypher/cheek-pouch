@@ -166,18 +166,6 @@ canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-
 .check input { accent-color: var(--seed); width: 16px; height: 16px; }
 .challenge { width: 100%; box-sizing: border-box; background: #3d2b14; border: 1px solid var(--seed); border-radius: 12px; padding: 8px 12px; font-size: 14px; color: var(--cream); }
 .challenge b { color: var(--seed); }
-.bet { display: grid; gap: 6px; }
-.bet p { font-size: 14px; color: var(--muted); }
-.bet p b { color: var(--cream); }
-.calls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.calls button {
-  border: 1px solid var(--soil-3); background: var(--soil); color: var(--cream); border-radius: 10px;
-  padding: 6px; display: grid; gap: 0; line-height: 1.2;
-}
-.calls button span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
-.calls button[aria-pressed="true"] { border-color: var(--seed); background: #3d2b14; }
-.calls button[aria-pressed="true"] span { color: var(--seed); }
-.calls button:disabled { opacity: .45; cursor: not-allowed; }
 .tally { font-family: var(--mono); font-size: 14px; display: grid; grid-template-columns: auto auto; gap: 4px 18px; text-align: left; font-variant-numeric: tabular-nums; margin: 0; }
 .tally dt { color: var(--muted); }
 .tally dd { margin: 0; text-align: right; }
@@ -1221,8 +1209,6 @@ const SIM = (() => {
 
   // ---------- start card ----------
   const overlay = $('overlay'), card = $('card');
-  let call = 'none', callOdds = { awake: 1, asleep: 1 };
-  function oddsNow() { return live.running ? { awake: 1.25, asleep: 2 } : { awake: 2, asleep: 1.25 }; }
   function showCard(html) { card.innerHTML = html; overlay.hidden = false; }
   const dailyReady = () => walletMode && !!dailyInfo;
   const challengeDay = () => (challenge && challenge.day !== todayUTC() ? challenge.day : null);
@@ -1238,16 +1224,7 @@ const SIM = (() => {
         ${g ? `<label class="check"><input type="checkbox" id="ghostBox" ${ghostOn ? 'checked' : ''}> Race ${esc(g.nick || g.address)}'s ghost (${g.score})</label>` : ''}
         ${past ? `<p>This is ${fmtDay(past)}'s run, so it's practice: it won't be saved.</p>` : session ? '' : '<p>Practice works signed out. <b>Sign in</b> to post your run to the board.</p>'}`;
     }
-    const o = oddsNow(), off = !live.ok || !live.fresh ? 'disabled' : '';
-    return `<p><b>Live from Squeekchain:</b> banks pay ×2 while Squeektoshi runs, and his real wheel work drops golden seeds.</p>
-      <div class="bet">
-        <p><b>Bonus bet (optional):</b> when your run ends, will the real hamster be on his wheel? A wrong guess costs a quarter of your score.</p>
-        <div class="calls" role="group" aria-label="Bonus bet">
-          <button type="button" data-call="awake" aria-pressed="${call === 'awake'}" ${off}>Running<span>score ×${o.awake}</span></button>
-          <button type="button" data-call="asleep" aria-pressed="${call === 'asleep'}" ${off}>Asleep<span>score ×${o.asleep}</span></button>
-          <button type="button" data-call="none" aria-pressed="${call === 'none'}">No bet<span>score ×1</span></button>
-        </div>
-      </div>`;
+    return `<p><b>Live from Squeekchain:</b> banks pay ×2 while Squeektoshi runs, and his real wheel work drops golden seeds.</p>`;
   }
   function renderModeBody() {
     const el = $('modeBody');
@@ -1264,8 +1241,6 @@ const SIM = (() => {
   card.addEventListener('click', e => {
     const m = e.target.closest('[data-mode]');
     if (m) { mode = m.dataset.mode; store('cheekpouch.mode', mode); renderModeBody(); return; }
-    const c = e.target.closest('[data-call]');
-    if (c && !c.disabled) { call = c.dataset.call; renderModeBody(); }
   });
   card.addEventListener('change', e => { if (e.target.id === 'ghostBox') { ghostOn = e.target.checked; store('cheekpouch.ghost', ghostOn ? '1' : '0'); } });
   function introCard() {
@@ -1316,8 +1291,6 @@ const SIM = (() => {
     } else {
       opts = { seed: (Math.random() * 4294967296) >>> 0, mult: 1 };
       ghost = null;
-      callOdds = oddsNow();
-      if (!live.ok || !live.fresh) call = 'none';
       if (walletMode && session) api('/runs', { method: 'POST', body: { mode: 'classic' } }).then(r => { if (run) run.id = r.runId; }).catch(() => {});
     }
     game = SIM.create(opts);
@@ -1328,7 +1301,6 @@ const SIM = (() => {
     overlay.hidden = true;
     last = performance.now();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    if (mode === 'classic' && call !== 'none') log(`You bet <b>${call === 'awake' ? 'running' : 'asleep'}</b> at the buzzer (×${callOdds[call]})`);
   }
 
   function togglePause() {
@@ -1349,20 +1321,7 @@ const SIM = (() => {
     const s = game.s, leftover = s.ham.held.length, secs = s.t;
     if (!tutored && s.banks > 0) markTutored();
     showCard(`<h2>Out of hearts</h2><p>${mode === 'daily' && run.id ? 'Replaying your run on the server…' : 'Saving your run…'}</p>`);
-    let verdict = 'none', factor = 1, note = '';
-    if (mode === 'classic' && call !== 'none') {
-      try {
-        const now = await readStatus();
-        if (!now.fresh) { verdict = 'void'; note = 'The feed reading was stale, so the bet was cancelled.'; }
-        else {
-          const right = (call === 'awake') === now.running;
-          verdict = right ? 'win' : 'lose';
-          factor = right ? callOdds[call] : 0.75;
-          note = `The real hamster was ${now.running ? 'running' : 'asleep'}. ${right ? 'You called it.' : 'Wrong guess.'}`;
-        }
-      } catch (e) { verdict = 'void'; note = 'The feed was unreachable, so the bet was cancelled.'; }
-    }
-    const final = Math.round(s.score * factor);
+    const final = s.score;
     const isBest = final > best;
     if (isBest) saveBest(final);
     let res = null, msg = '';
@@ -1380,17 +1339,15 @@ const SIM = (() => {
         } catch (e) { msg = e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
       }
     } else msg = await postClaudeScore(final, secs);
-    if (mode === 'classic' && call !== 'none') log(`Bonus bet ${verdict === 'win' ? '<b>won</b>' : verdict === 'lose' ? 'lost' : 'cancelled'}`);
     log(`Run over, <b>${final}</b> points`);
     lastResult = { mode, day: run.day, score: final, level: s.level, secs, rank: res && res.daily ? res.daily.rank : null, practice: run.practice };
     state = 'over';
     if (res && res.levelUp) { sfx.level(); }
-    endCard({ s, final, factor, verdict, note, leftover, isBest, res, msg, secs });
+    endCard({ s, final, leftover, isBest, res, msg, secs });
     if (walletMode) { loadBoard(); loadMissions(); if (mode === 'daily') loadGhost(run.day); }
   }
 
-  function endCard({ s, final, verdict, factor, note, leftover, isBest, res, msg, secs }) {
-    const betRow = mode === 'classic' ? `<dt>Bonus bet</dt><dd>${call === 'none' ? 'none' : verdict === 'win' ? `won ×${factor}` : verdict === 'lose' ? 'lost ×0.75' : 'cancelled'}</dd>` : '';
+  function endCard({ s, final, leftover, isBest, res, msg, secs }) {
     const badges = [];
     let xpHtml = '';
     if (res) {
@@ -1415,11 +1372,10 @@ const SIM = (() => {
         <dt>Reached</dt><dd>level ${s.level} in ${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}</dd>
         <dt>Banked in ${s.banks} trip${s.banks === 1 ? '' : 's'}</dt><dd>${s.score}</dd>
         ${leftover ? `<dt>Still in cheeks (lost)</dt><dd>${leftover} seed${leftover === 1 ? '' : 's'}</dd>` : ''}
-        ${betRow}
         <dt class="total">Final score</dt><dd class="total">${final}</dd>
       </dl>
       ${xpHtml || badges.length ? `<div class="rewards">${xpHtml}<div class="badges">${badges.join('')}</div></div>` : ''}
-      <p class="fine">${esc(note)}${isBest && !res ? ' New best on this device!' : ''} ${esc(msg)}</p>
+      <p class="fine">${isBest && !res ? 'New best on this device! ' : ''}${esc(msg)}</p>
       ${s.banks > 0 && s.score / s.banks < 15 ? '<p class="fine">Tip: wait until your cheeks hold 8 or more before heading home. 8 seeds pay 36, two trips of 4 pay only 20.</p>' : ''}
       <div class="share">
         <button type="button" class="small" id="shareBtn">Share card</button>
