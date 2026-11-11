@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: a burrow at dusk — live wheel strip on top, playfield + short side guide below, stacking on phones.
+/* Layout: a burrow at dusk — live wheel strip on top, playfield, then a row of cards (board, missions, wardrobe).
    Single committed look (soil + sunflower), so colors are set explicitly, no theme switch. */
 :root {
   --soil: #241912;
@@ -52,17 +52,18 @@ h1 {
   text-shadow: 0 3px 0 #7a4a1c;
 }
 .tag { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+.tag b { color: var(--cream); font-weight: 600; }
 header.top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; }
 header.top .intro { flex: 1 1 420px; min-width: 0; }
-.account { flex: 0 1 280px; display: grid; gap: 8px; justify-items: end; background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 14px; padding: 12px; }
+.account { flex: 0 1 290px; display: grid; gap: 8px; justify-items: end; background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 14px; padding: 12px; }
 .account .inp { width: 100%; box-sizing: border-box; }
 .account .src { margin: 0; font-size: 12px; text-align: right; }
 .account .src:empty { display: none; }
 .acct-row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .who { font-family: var(--mono); font-size: 13px; color: var(--cream); }
 .who i { font-style: normal; color: var(--seed); }
+.chip { font-family: var(--mono); font-size: 12px; color: var(--seed); background: var(--soil); border: 1px solid var(--soil-3); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
 .go-sm { font-size: 1rem; padding: 6px 18px; box-shadow: 0 3px 0 #a2721d; }
-.tag b { color: var(--cream); font-weight: 600; }
 
 /* live strip */
 .live {
@@ -96,7 +97,8 @@ header.top .intro { flex: 1 1 420px; min-width: 0; }
 
 /* main */
 .main { display: grid; gap: 16px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; align-items: start; }
+.stage { display: grid; gap: 10px; min-width: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; align-items: start; }
 .more { border: 1px solid var(--soil-3); border-radius: 14px; background: var(--soil-2); }
 .more > summary { cursor: pointer; padding: 12px 16px; font-family: var(--display); font-size: 1.1rem; color: var(--cream); list-style: none; display: flex; align-items: center; gap: 10px; }
 .more > summary::-webkit-details-marker { display: none; }
@@ -109,7 +111,6 @@ header.top .intro { flex: 1 1 420px; min-width: 0; }
 .levels span { font-size: 13px; color: var(--muted); background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 999px; padding: 2px 10px; }
 .levels b { color: var(--seed); font-family: var(--mono); font-size: 12px; margin-right: 4px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.stage { display: grid; gap: 10px; min-width: 0; }
 .hud {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
   font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums;
@@ -121,21 +122,35 @@ header.top .intro { flex: 1 1 420px; min-width: 0; }
 @keyframes pop { 40% { transform: scale(1.35); } }
 .timebar { flex: 1 1 120px; height: 8px; background: var(--soil-2); border-radius: 4px; overflow: hidden; min-width: 80px; }
 .timebar span { display: block; height: 100%; width: 0; background: var(--danger); }
+.modeTag { color: var(--wheel); font-size: 12px; }
 
 .field { position: relative; border-radius: 16px; overflow: hidden; border: 2px solid var(--soil-3); background: #0e1626; }
-canvas { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-width: 100%; }
+canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-width: 100%; }
 .overlay {
   position: absolute; inset: 0; display: grid; place-items: center; padding: 14px;
-  background: rgba(20, 13, 9, .78); text-align: center; overflow: auto;
+  background: rgba(20, 13, 9, .8); text-align: center; overflow: auto;
 }
-.card { max-width: 460px; display: grid; gap: 12px; justify-items: center; }
+.card { max-width: 480px; width: 100%; display: grid; gap: 12px; justify-items: center; }
 .card h2 { font-family: var(--display); font-weight: 400; font-size: clamp(1.5rem, 4vw, 2.2rem); margin: 0; color: var(--seed); line-height: 1; }
 .card p { margin: 0; color: var(--cream); }
 .card .fine { color: var(--muted); font-size: 14px; }
+.card .fine:empty { display: none; }
 .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
 .steps div { background: rgba(51, 37, 27, .9); border: 1px solid var(--soil-3); border-radius: 10px; padding: 8px; font-size: 14px; line-height: 1.25; }
 .steps b { display: block; font-family: var(--display); font-weight: 400; color: var(--seed); font-size: 1.05rem; }
-.bet { width: 100%; display: grid; gap: 6px; border-top: 1px dashed var(--soil-3); padding-top: 10px; }
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 12px; padding: 4px; }
+.modes button { border: 0; background: none; color: var(--muted); border-radius: 9px; padding: 8px 6px; font-family: var(--display); font-size: 1.05rem; }
+.modes button[aria-selected="true"] { background: var(--seed); color: #3b2410; }
+.modes button:disabled { opacity: .4; cursor: not-allowed; }
+.modeBody { width: 100%; display: grid; gap: 8px; text-align: left; background: rgba(51, 37, 27, .9); border: 1px solid var(--soil-3); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.modeBody p { color: var(--muted); }
+.modeBody b { color: var(--cream); }
+.modeBody .gold { color: var(--seed); }
+.check { display: flex; align-items: center; gap: 8px; color: var(--cream); font-size: 14px; cursor: pointer; }
+.check input { accent-color: var(--seed); width: 16px; height: 16px; }
+.challenge { width: 100%; box-sizing: border-box; background: #3d2b14; border: 1px solid var(--seed); border-radius: 12px; padding: 8px 12px; font-size: 14px; color: var(--cream); }
+.challenge b { color: var(--seed); }
+.bet { display: grid; gap: 6px; }
 .bet p { font-size: 14px; color: var(--muted); }
 .bet p b { color: var(--cream); }
 .calls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -151,15 +166,26 @@ canvas { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-wid
 .tally dt { color: var(--muted); }
 .tally dd { margin: 0; text-align: right; }
 .tally .total { color: var(--seed); font-size: 18px; font-weight: 600; }
+.rewards { width: 100%; display: grid; gap: 6px; text-align: left; }
+.rewards .xp { display: grid; gap: 4px; font-family: var(--mono); font-size: 13px; color: var(--cream); }
+.rewards .xp b { color: var(--seed); }
+.xpbar { height: 8px; background: var(--soil); border-radius: 4px; overflow: hidden; }
+.xpbar span { display: block; height: 100%; background: var(--seed); width: 0; transition: width .8s; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.badge { font-size: 13px; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 999px; padding: 3px 10px; color: var(--cream); }
+.badge.gold { border-color: var(--seed); color: var(--seed); }
+.share { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.share a { text-decoration: none; display: inline-flex; align-items: center; }
 
 button { font: inherit; cursor: pointer; }
-button:focus-visible { outline: 3px solid var(--wheel); outline-offset: 2px; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--wheel); outline-offset: 2px; }
 .go {
   font-family: var(--display); font-size: 1.35rem; letter-spacing: .02em;
   background: var(--seed); color: #3b2410; border: 0; border-radius: 999px;
   padding: 10px 28px; box-shadow: 0 4px 0 #a2721d;
 }
 .go:active { transform: translateY(2px); box-shadow: 0 2px 0 #a2721d; }
+.go:disabled { opacity: .6; cursor: wait; }
 
 .pad { display: none; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 .pad button {
@@ -169,23 +195,27 @@ button:focus-visible { outline: 3px solid var(--wheel); outline-offset: 2px; }
 .pad button.held { background: var(--soil-3); }
 @media (pointer: coarse) { .pad { display: grid; } .keys { display: none; } }
 
-.box { background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.box { background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
 .box h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.25rem; color: var(--cream); }
 .box p, .box li { margin: 0; color: var(--muted); font-size: 15px; }
 .box p b, .box li b { color: var(--cream); font-weight: 600; }
 .box ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 .payout { font-family: var(--mono); font-size: 13px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; text-align: center; }
-.payout div { background: var(--soil); border-radius: 8px; padding: 4px 0; color: var(--muted); }
+.payout div { background: var(--soil-2); border-radius: 8px; padding: 4px 0; color: var(--muted); }
 .payout b { display: block; color: var(--seed); font-size: 15px; }
 .keys { font-family: var(--mono); font-size: 13px; color: var(--muted); }
 kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border: 1px solid var(--soil-3); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--cream); }
 .log { font-family: var(--mono); font-size: 12px; color: var(--muted); display: grid; gap: 4px; max-height: 120px; overflow: auto; }
 .log div b { color: var(--seed); font-weight: 600; }
-.src { font-size: 13px; color: var(--muted); }
+.src { font-size: 13px; color: var(--muted); margin: 0; }
 .src a { color: var(--wheel); }
+.src:empty { display: none; }
 
 .mute { margin-left: auto; border: 1px solid var(--soil-3); background: var(--soil-2); color: var(--cream); border-radius: 999px; padding: 2px 12px; font-family: var(--mono); font-size: 12px; }
 .mute[aria-pressed="true"] { color: var(--muted); text-decoration: line-through; }
+.tabs { display: flex; gap: 4px; background: var(--soil); border-radius: 10px; padding: 3px; }
+.tabs button { flex: 1; border: 0; background: none; color: var(--muted); border-radius: 8px; padding: 4px 6px; font-family: var(--mono); font-size: 12px; }
+.tabs button[aria-selected="true"] { background: var(--soil-3); color: var(--cream); }
 .board { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .board li { display: grid; grid-template-columns: 2.5ch minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 8px; background: var(--soil); }
 .board li.me { outline: 1px solid var(--seed); }
@@ -195,17 +225,33 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 .board .lv { color: var(--muted); }
 .board .sc { color: var(--seed); font-weight: 600; }
 .board li.empty { display: block; color: var(--muted); background: none; padding: 0; }
-#signBtn { justify-self: start; }
+.blockNow { background: var(--soil); border-radius: 10px; padding: 8px 10px; font-size: 14px; color: var(--muted); }
+.blockNow b { color: var(--cream); }
+.blockNow .gold { color: var(--seed); }
+.missions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.missions li { display: grid; gap: 4px; font-size: 14px; color: var(--cream); }
+.missions li .top { display: flex; justify-content: space-between; gap: 8px; }
+.missions li .top span:last-child { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.missions li.done .top span:first-child { color: var(--muted); text-decoration: line-through; }
+.missions li.done .top span:last-child { color: var(--ok); }
+.mbar { height: 5px; background: var(--soil); border-radius: 3px; overflow: hidden; }
+.mbar span { display: block; height: 100%; background: var(--seed); }
+.missions li.done .mbar span { background: var(--ok); }
+.mhead { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.wardrobe { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: center; }
+#preview { width: 120px; height: 100px; background: var(--soil); border-radius: 10px; }
+.stats { display: grid; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.stats b { color: var(--cream); }
+.slot { display: grid; gap: 4px; }
+.slot .k { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.items { display: flex; flex-wrap: wrap; gap: 6px; }
+.items button { border: 1px solid var(--soil-3); background: var(--soil); color: var(--cream); border-radius: 8px; padding: 3px 8px; font-size: 13px; }
+.items button[aria-pressed="true"] { border-color: var(--seed); color: var(--seed); }
+.items button:disabled { color: var(--muted); opacity: .6; cursor: not-allowed; }
 .row { display: flex; gap: 8px; }
 .inp { flex: 1 1 auto; min-width: 0; font-family: var(--mono); font-size: 13px; background: var(--soil); color: var(--cream); border: 1px solid var(--soil-3); border-radius: 8px; padding: 6px 10px; }
 .inp:focus-visible { outline: 2px solid var(--wheel); outline-offset: 1px; }
 .small { border: 1px solid var(--soil-3); background: var(--soil-3); color: var(--cream); border-radius: 8px; padding: 6px 12px; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
-.lbl2 { font-size: 13px; color: var(--muted); }
-.box .perks { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-.box .perks li { background: var(--soil); border-radius: 8px; padding: 6px 4px; font-size: 12px; line-height: 1.2; border: 1px solid transparent; text-align: center; color: var(--muted); }
-.box .perks li b { display: block; font-family: var(--display); font-weight: 400; font-size: 14px; color: var(--muted); }
-.box .perks li.on { border-color: var(--seed); }
-.box .perks li.on b { color: var(--seed); }
 
 @media (max-width: 900px) {
   .live { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -216,7 +262,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   .account .src { text-align: left; }
   .acct-row { justify-content: space-between; }
   /* the playfield is too short on phones for the start/end card, so the card takes its place */
-  .field:has(.overlay:not([hidden])) canvas { display: none; }
+  .field:has(.overlay:not([hidden])) canvas#cv { display: none; }
   .overlay { position: static; background: var(--soil-2); padding: 16px 12px; }
   .steps { gap: 6px; }
   .steps div { font-size: 12px; padding: 6px; }
@@ -225,7 +271,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 }
 @media (prefers-reduced-motion: reduce) {
   .pill.run i, .score.pop { animation: none; }
-  .bar > span { transition: none; }
+  .bar > span, .xpbar span { transition: none; }
 }
 </style>
 
@@ -269,6 +315,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         <span><span class="lbl">Score</span><span class="score" id="hudScore">0</span></span>
         <span><span class="lbl">Level</span><span class="score" id="hudLevel">1</span></span>
         <span><span class="lbl">Best</span><span id="best">0</span></span>
+        <span class="modeTag" id="hudMode"></span>
         <span class="timebar" aria-label="Progress to next level"><span id="hudTime"></span></span>
         <button type="button" class="mute" id="muteBtn" aria-pressed="false">Sound</button>
       </div>
@@ -284,35 +331,37 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       <div class="keys"><kbd>←</kbd> <kbd>→</kbd> run · <kbd>Space</kbd> hop · <kbd>Enter</kbd> start · <kbd>P</kbd> pause · <kbd>M</kbd> sound</div>
     </div>
 
-    <section class="cards" aria-label="Board, perks and payouts">
+    <section class="cards" aria-label="Boards, missions and wardrobe">
       <div class="box" id="boardBox">
-        <h3>Top burrowers</h3>
+        <h3>Leaderboards</h3>
+        <div class="tabs" role="tablist" id="boardTabs">
+          <button type="button" role="tab" data-board="daily" aria-selected="true">Today</button>
+          <button type="button" role="tab" data-board="all" aria-selected="false">All time</button>
+          <button type="button" role="tab" data-board="blocks" aria-selected="false">Blocks</button>
+        </div>
+        <div class="blockNow" id="blockNow" hidden></div>
         <ol class="board" id="board"><li class="empty">Loading the board…</li></ol>
-        <p class="src" id="boardNote">Your best run is posted when it beats your last one.</p>
+        <p class="src" id="boardNote"></p>
       </div>
 
-      <div class="box">
-        <h3>Squeek perks</h3>
-        <div class="row">
-          <label class="sr" for="walletIn">Wallet address</label>
-          <input class="inp" id="walletIn" type="text" placeholder="0x… wallet address" spellcheck="false" autocomplete="off">
-          <button type="button" class="small" id="walletBtn">Check</button>
-        </div>
-        <ul class="perks" id="perks">
-          <li data-perk="crown" title="Hold 1+ Squeek"><b>Crown</b>Hold 1+</li>
-          <li data-perk="shades" title="Stake 1+ Squeek"><b>Shades</b>Stake 1+</li>
-          <li data-perk="scarf" title="Own a level 2+ Squeek"><b>Scarf</b>Level 2+</li>
-          <li data-perk="gold" title="Hold 10+ Squeeks"><b>Golden fur</b>Hold 10+</li>
-        </ul>
-        <p class="src" id="walletNote">Looks only, never your score. Read-only, nothing is signed.</p>
+      <div class="box" id="missionBox">
+        <h3>Missions</h3>
+        <div class="mhead"><span>Today</span><span id="dailyReset"></span></div>
+        <ul class="missions" id="dailyMissions"><li>Loading…</li></ul>
+        <div class="mhead"><span>This week</span><span id="weeklyReset"></span></div>
+        <ul class="missions" id="weeklyMissions"><li>Loading…</li></ul>
+        <p class="src" id="missionNote"></p>
       </div>
 
-      <div class="box">
-        <h3>Bigger trips pay more</h3>
-        <div class="payout">
-          <div>1 seed<b>1</b></div><div>4 seeds<b>10</b></div><div>8 seeds<b>36</b></div><div>12 seeds<b>78</b></div>
+      <div class="box" id="wardrobeBox">
+        <h3>Your hamster</h3>
+        <div class="wardrobe">
+          <canvas id="preview" width="240" height="200" aria-label="Your hamster's outfit"></canvas>
+          <div class="stats" id="hamStats"></div>
         </div>
-        <p class="src">The burrow sign shows what you'd bank right now. Golden seeds add 20.</p>
+        <div class="xpbar" aria-label="Progress to the next hamster level"><span id="xpFill"></span></div>
+        <div id="slots"></div>
+        <p class="src" id="wardrobeNote"></p>
       </div>
     </section>
 
@@ -322,19 +371,32 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         <div class="box">
           <h3>Rules</h3>
           <ul>
-            <li><b>Golden seeds</b> add 20 and fall only when the real wheel logs work.</li>
+            <li>Run left into the burrow to bank. <b>Bigger trips pay much more</b>.</li>
             <li>A hit spills <b>half</b> your cheeks onto the ground. Grab them back before they fade.</li>
-            <li>Full cheeks make you a little slower.</li>
-            <li>While the real hamster runs, every bank pays <b>×2</b>.</li>
+            <li><b>Golden seeds</b> add 20. In Free play they fall when the real wheel logs work; in the Daily Burrow, yesterday's wheel work sets how many.</li>
+            <li><b>Power-ups</b>: a helmet blocks one hit, a magnet pulls seeds in, big cheeks hold 16.</li>
+            <li>In Free play, every bank pays <b>×2</b> while the real hamster runs.</li>
           </ul>
+          <div class="payout">
+            <div>1 seed<b>1</b></div><div>4 seeds<b>10</b></div><div>8 seeds<b>36</b></div><div>12 seeds<b>78</b></div>
+          </div>
         </div>
         <div class="box">
           <h3>It keeps getting harder</h3>
           <p>A new level every 20 seconds:</p>
           <div class="levels">
-            <span><b>L2</b> faster pebbles</span><span><b>L3</b> pairs</span><span><b>L4</b> quicker cat</span>
-            <span><b>L5</b> pebble storms</span><span><b>L6</b> double swipes</span><span><b>L7+</b> faster still</span>
+            <span><b>L2</b> faster pebbles</span><span><b>L3</b> pairs</span><span><b>L4</b> wind gusts</span>
+            <span><b>L5</b> pebble storms</span><span><b>L6</b> owl swoops</span><span><b>L7</b> double swipes</span>
+            <span><b>L8</b> puddles</span><span><b>L9+</b> faster still</span>
           </div>
+        </div>
+        <div class="box">
+          <h3>Competitions</h3>
+          <ul>
+            <li><b>Daily Burrow</b>: the same run for everyone, resetting at midnight UTC. Runs are checked by replaying your key presses. The top three keep a podium.</li>
+            <li><b>Block Champion</b>: the best score set while a Squeekchain block is mined wins that block.</li>
+            <li><b>Streaks</b>: play on back-to-back days for bonus XP.</li>
+          </ul>
         </div>
         <div class="box">
           <h3>Wheel log</h3>
@@ -347,38 +409,40 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 </div>
 
 <script>
+/* SIM:INLINE */
+</script>
+<script>
 (() => {
-  const API = 'https://api.squeekchain.com/v1/status';
-  const W = 800, H = 480, GROUND = 412, BURROW_X = 80, CAP = 12, LEVEL_SECS = 20, R = 22;
-  // what each new level adds, announced on screen like a new obstacle
-  const LEVEL_NEWS = {
-    2: 'Pebbles fall faster',
-    3: 'Pebbles now come in pairs',
-    4: 'The cat swipes faster',
-    5: 'Pebble storms: three at once',
-    6: 'Watch for double swipes',
-    7: 'Everything speeds up'
-  };
-  const FLOWERS = [180, 300, 420, 540, 660];
+  const { W, GROUND, BURROW_X, R, HZ, DT, FLOWERS, LEVEL_NEWS, LEFT, RIGHT, JUMP, COSMETICS } = SIM;
+  const H = 480;
+  const SQUEEK = 'https://api.squeekchain.com/v1/status';
+  const API_PROD = 'https://cheek-pouch-api.cheek-pouch-api.workers.dev';
+  const SITE = 'https://cheek-pouch.live/';
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
   const $ = id => document.getElementById(id);
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const shortAddr = a => a.slice(0, 6) + '…' + a.slice(-4);
+  const todayUTC = () => new Date().toISOString().slice(0, 10);
+  const fmtDay = day => new Date(day + 'T12:00:00Z').toLocaleDateString([], { month: 'short', day: 'numeric' });
+  // a page served from this computer can test against a local API (set localStorage cheekpouch.api)
+  const API_URL = (/^(127\.0\.0\.1|localhost)$/.test(location.hostname) && load('cheekpouch.api')) || API_PROD;
+  function store(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   cv.width = W * dpr; cv.height = H * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  // ---------- storage ----------
-  let best = 0, tutored = false;
-  try { best = Number(localStorage.getItem('cheekpouch.best') || 0) || 0; tutored = localStorage.getItem('cheekpouch.tutored') === '1'; } catch (e) {}
+  // ---------- local bests ----------
+  let best = Number(load('cheekpouch.best')) || 0, tutored = load('cheekpouch.tutored') === '1';
   $('best').textContent = best;
-  function saveBest(v) { best = v; $('best').textContent = v; try { localStorage.setItem('cheekpouch.best', String(v)); } catch (e) {} }
-  function markTutored() { tutored = true; try { localStorage.setItem('cheekpouch.tutored', '1'); } catch (e) {} }
+  function saveBest(v) { best = v; $('best').textContent = v; store('cheekpouch.best', String(v)); }
+  function markTutored() { tutored = true; store('cheekpouch.tutored', '1'); }
 
   // ---------- sound: tiny synth, nothing to download ----------
-  let actx = null, muted = false;
-  try { muted = localStorage.getItem('cheekpouch.muted') === '1'; } catch (e) {}
+  let actx = null, muted = load('cheekpouch.muted') === '1';
   function audio() {
     if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
     if (actx.state === 'suspended') actx.resume();
@@ -393,13 +457,13 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
     o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + .02);
   }
-  function thud(dur = .25, vol = .3) {
+  function noise(dur = .25, vol = .3, freq = 700) {
     if (muted) return;
     const a = audio(); if (!a) return;
     const b = a.createBuffer(1, Math.floor(a.sampleRate * dur), a.sampleRate), d = b.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
     const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-    src.buffer = b; f.type = 'lowpass'; f.frequency.value = 700; g.gain.value = vol;
+    src.buffer = b; f.type = 'lowpass'; f.frequency.value = freq; g.gain.value = vol;
     src.connect(f).connect(g).connect(a.destination); src.start();
   }
   const sfx = {
@@ -408,260 +472,135 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     full: () => tone(196, .16, { type: 'square', vol: .04 }),
     bank: n => [523, 659, 784, 1047, 1319].slice(0, Math.min(5, 1 + Math.floor(n / 3))).forEach((f, i) => tone(f, .14, { vol: .05, delay: i * .07 })),
     hop: () => tone(280, .12, { type: 'sine', vol: .08, slide: 320 }),
-    hit: () => { thud(); tone(170, .25, { type: 'sawtooth', vol: .05, slide: -110 }); },
+    hit: () => { noise(); tone(170, .25, { type: 'sawtooth', vol: .05, slide: -110 }); },
+    shield: () => { tone(1200, .08, { type: 'triangle', vol: .06 }); tone(900, .15, { type: 'triangle', vol: .05, delay: .06 }); },
+    power: () => [660, 880, 1320].forEach((f, i) => tone(f, .1, { type: 'sine', vol: .07, delay: i * .05 })),
     warn: () => { tone(760, .09, { vol: .05 }); tone(760, .09, { vol: .05, delay: .16 }); },
+    owl: () => { tone(420, .22, { type: 'sine', vol: .07, slide: -60 }); tone(380, .3, { type: 'sine', vol: .06, delay: .28, slide: -80 }); },
+    wind: () => noise(1.2, .12, 400),
     level: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .15, { vol: .05, delay: i * .08 })),
-    over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, .22, { type: 'triangle', vol: .07, delay: i * .15 }))
+    over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, .22, { type: 'triangle', vol: .07, delay: i * .15 })),
   };
   const muteBtn = $('muteBtn');
   function renderMute() { muteBtn.setAttribute('aria-pressed', muted); muteBtn.textContent = muted ? 'Sound off' : 'Sound on'; }
-  function toggleMute() { muted = !muted; try { localStorage.setItem('cheekpouch.muted', muted ? '1' : '0'); } catch (e) {} renderMute(); if (!muted) sfx.catch(3); }
+  function toggleMute() { muted = !muted; store('cheekpouch.muted', muted ? '1' : '0'); renderMute(); if (!muted) sfx.catch(3); }
   muteBtn.onclick = toggleMute;
   renderMute();
 
-  // ---------- Squeek perks (read-only wallet lookup) ----------
-  let perks = { crown: false, shades: false, scarf: false, gold: false }, wallet = null;
-  const walletIn = $('walletIn'), walletNote = $('walletNote');
-  function renderPerks() { document.querySelectorAll('#perks li').forEach(li => li.classList.toggle('on', !!perks[li.dataset.perk])); }
-  async function checkWallet(addr) {
-    addr = (addr || '').trim();
-    if (!addr) { perks = { crown: false, shades: false, scarf: false, gold: false }; wallet = null; renderPerks(); walletNote.textContent = 'Wallet cleared.'; try { localStorage.removeItem('cheekpouch.wallet'); } catch (e) {} return; }
-    if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) { walletNote.textContent = 'That is not a wallet address. It starts with 0x and has 42 characters.'; return; }
-    walletNote.textContent = 'Checking Squeekchain…';
+  // ---------- live feed ----------
+  let live = { ok: false, running: false, fresh: false, rpm: 0, speed: 0, work: 0, height: 0, progress: 0, round: '–' };
+  const logEl = $('log');
+  let logStarted = false;
+  function log(html) {
+    if (!logStarted) { logEl.innerHTML = ''; logStarted = true; }
+    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const d = document.createElement('div');
+    d.innerHTML = `${t} · ${html}`;
+    logEl.prepend(d);
+    while (logEl.children.length > 30) logEl.lastChild.remove();
+  }
+  async function readStatus() {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 7000);
     try {
-      const base = 'https://api.squeekchain.com/v1/accounts/' + addr;
-      let url = base, pages = 0, counts = null, maxLevel = 0;
-      while (url && pages < 4) {
-        const r = await fetch(url, { cache: 'no-store' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const d = await r.json();
-        counts = counts || d.tokenCounts || {};
-        for (const tk of d.tokens || []) maxLevel = Math.max(maxLevel, Number(tk.level) || 0);
-        pages++;
-        url = d.nextCursor ? base + '?cursor=' + encodeURIComponent(d.nextCursor) : null;
+      const r = await fetch(SQUEEK, { cache: 'no-store', signal: ctrl.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      const m = d.measurement || {}, b = d.builder || {}, p = b.projected || b.anchor || {};
+      const fresh = m.freshness === 'online';
+      const rpm = (Number(m.rpmMilli) || 0) / 1000;
+      return {
+        ok: true, fresh,
+        running: fresh && ((m.coreStatus && m.coreStatus !== 'IDLE') || rpm > 0),
+        rpm, speed: Number(m.speedMmPerSecond) || 0, work: Number(m.cumulativeWorkUnits) || 0, epoch: m.counterEpoch,
+        height: Number(p.blockHeight) || 0, progress: (Number(p.blockProgress) || 0) / 1e9,
+        round: (b.anchor && b.anchor.settledThroughRound) || p.settledThroughRound || '–',
+      };
+    } finally { clearTimeout(to); }
+  }
+  async function poll() {
+    try {
+      const next = await readStatus();
+      // a reply without block data keeps the last good block reading
+      if (!next.height && live.height) { next.height = live.height; next.progress = live.progress; next.round = live.round; }
+      if (live.ok) {
+        if (next.epoch === live.epoch && next.work > live.work) onWork(next.work - live.work);
+        if (live.height && next.height > live.height) onBlock(next.height);
+        if (next.running !== live.running) {
+          log(next.running ? '<b>Squeektoshi hopped on the wheel</b>' : 'Squeektoshi stepped off to rest');
+          if (state === 'play' && mode === 'classic') toast(next.running ? 'The real hamster is running! Banks pay ×2' : 'The real hamster went to rest. Banks back to ×1', next.running ? '#9fd16f' : '#82cfe0');
+        }
+      } else {
+        log(`Connected. ${next.running ? '<b>He is running</b>' : 'He is asleep'} at block ${next.height}.`);
       }
-      const staked = Number(counts.staking) || 0, held = Number(counts.wallet) || 0, total = staked + held;
-      perks = { crown: total >= 1, shades: staked >= 1, scarf: maxLevel >= 2, gold: total >= 10 };
-      wallet = { short: addr.slice(0, 6) + '…' + addr.slice(-4), total };
-      renderPerks();
-      walletNote.textContent = total ? `${total} Squeek${total === 1 ? '' : 's'} found, ${staked} staked, highest level ${maxLevel}.` : 'No Squeeks in this wallet yet. Perks unlock once it holds one.';
-      try { localStorage.setItem('cheekpouch.wallet', addr); } catch (e) {}
-    } catch (e) { walletNote.textContent = 'Squeekchain did not answer. Try again in a moment.'; }
-  }
-  $('walletBtn').onclick = () => checkWallet(walletIn.value);
-  walletIn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.stopPropagation(); checkWallet(walletIn.value); } });
-  try { const saved = localStorage.getItem('cheekpouch.wallet'); if (saved) { walletIn.value = saved; checkWallet(saved); } } catch (e) {}
-
-  // ---------- wallet sign-in and saved progress (on cheek-pouch.live) ----------
-  // Sign-in is a free EIP-4361 message signature: no gas, no transaction.
-  const API_URL = 'https://cheek-pouch-api.cheek-pouch-api.workers.dev';
-  let walletMode = false, session = null, player = null, runId = null;
-  try { const saved = JSON.parse(localStorage.getItem('cheekpouch.session') || 'null'); if (saved && saved.token) session = saved; } catch (e) {}
-  const signBtn = $('signBtn'), acctWho = $('acctWho'), acctNote = $('acctNote');
-  const shortAddr = a => a.slice(0, 6) + '…' + a.slice(-4);
-
-  async function api(path, { method = 'GET', body } = {}) {
-    const r = await fetch(API_URL + path, {
-      method, body: body ? JSON.stringify(body) : undefined,
-      headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: 'Bearer ' + session.token } : {}) }
-    });
-    const d = await r.json().catch(() => ({}));
-    if (r.status === 401 && session && !path.startsWith('/auth/')) setSession(null);
-    if (!r.ok) throw Object.assign(new Error(d.message || 'The server did not answer.'), { code: d.error, status: r.status });
-    return d;
-  }
-  function setSession(s) {
-    session = s; if (!s) player = null;
-    try { s ? localStorage.setItem('cheekpouch.session', JSON.stringify({ token: s.token })) : localStorage.removeItem('cheekpouch.session'); } catch (e) {}
-    renderWallet();
-  }
-  function applyPlayer(p) {
-    player = p;
-    perks = { ...p.perks }; renderPerks();
-    walletIn.value = p.address;
-    walletNote.textContent = p.squeeks ? `Your wallet: ${p.squeeks} Squeek${p.squeeks === 1 ? '' : 's'}, ${p.staked} staked, highest level ${p.topLevel}.` : 'Your wallet holds no Squeeks yet. Perks unlock once it does.';
-    if (p.nick && document.activeElement !== nickIn) nickIn.value = p.nick;
-    if (p.bestScore > best) saveBest(p.bestScore);
-    renderWallet();
-  }
-  // the account block, top right of the page
-  function renderWallet() {
-    if (!walletMode) return;
-    const signedIn = !!(session && player);
-    signBtn.hidden = false;
-    acctWho.hidden = !signedIn;
-    nickIn.hidden = !signedIn;
-    if (signedIn) {
-      signBtn.textContent = 'Sign out'; signBtn.className = 'small';
-      acctWho.innerHTML = (player.perks.crown ? '<i>♛</i> ' : '') + shortAddr(player.address);
-      acctNote.textContent = `Best ${player.bestScore} · ${player.runs} run${player.runs === 1 ? '' : 's'} saved`;
-    } else if (window.ethereum && window.ethereum.request) {
-      signBtn.textContent = 'Sign in with wallet'; signBtn.className = 'go go-sm';
-      acctNote.textContent = 'Save your progress and join the board. Free, no transaction.';
-    } else {
-      signBtn.hidden = true;
-      acctNote.textContent = 'To save progress, open cheek-pouch.live in your wallet app\'s browser (MetaMask, Coinbase Wallet, Rainbow) and sign in.';
-    }
-  }
-  async function signIn() {
-    try {
-      acctNote.textContent = 'Check your wallet…';
-      const [addr] = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      const { message } = await api('/auth/nonce', { method: 'POST', body: { address: addr } });
-      const hexMsg = '0x' + [...new TextEncoder().encode(message)].map(b => b.toString(16).padStart(2, '0')).join('');
-      const signature = await window.ethereum.request({ method: 'personal_sign', params: [hexMsg, addr] });
-      const d = await api('/auth/verify', { method: 'POST', body: { message, signature } });
-      setSession({ token: d.token });
-      applyPlayer(d.player);
-      const typed = nickIn.value.trim();
-      if (typed && typed !== d.player.nick) saveNick(typed);
-      loadWalletBoard();
+      live = next;
     } catch (e) {
-      renderWallet();
-      acctNote.textContent = e && e.code === 4001 ? 'Sign-in cancelled in your wallet.' : (e && e.message) || 'Sign-in failed. Try again.';
+      if (live.ok || !logStarted) log('Feed unreachable, retrying');
+      live = { ...live, ok: false, running: false, fresh: false };
+    }
+    renderLive();
+    if (state === 'ready' || state === 'over') renderModeBody();
+  }
+  function renderLive() {
+    const pill = $('pill'), txt = $('pillText');
+    if (!live.ok) { pill.className = 'pill off'; txt.textContent = 'Feed offline'; }
+    else if (!live.fresh) { pill.className = 'pill off'; txt.textContent = 'Stale reading'; }
+    else if (live.running) { pill.className = 'pill run'; txt.textContent = 'Running'; }
+    else { pill.className = 'pill idle'; txt.textContent = 'Asleep'; }
+    renderUsual();
+    if (!live.ok) return;
+    $('lvRpm').innerHTML = `${live.rpm.toFixed(1)} <small>rpm · ${(live.speed / 1000).toFixed(2)} m/s</small>`;
+    $('lvWork').textContent = live.work.toLocaleString();
+    $('lvRound').textContent = '#' + live.round;
+    $('lvHeight').textContent = '#' + (live.height + 1);
+    $('lvProg').textContent = (live.progress * 100).toFixed(2) + '%';
+    $('lvBar').style.width = (live.progress * 100).toFixed(2) + '%';
+  }
+  function onWork(delta) {
+    log(`Real wheel logged <b>+${delta} work</b>`);
+    if (state === 'play' && mode === 'classic') {
+      const n = Math.min(3, Math.max(1, Math.ceil(delta / 5)));
+      game.dropGold(n);
+      toast(`Real wheel +${delta} work: golden seed${n > 1 ? 's' : ''} incoming!`, '#f2c14e');
     }
   }
-  signBtn.onclick = () => {
-    if (session) { api('/auth/logout', { method: 'POST' }).catch(() => {}); setSession(null); return; }
-    signIn();
-  };
-  async function saveNick(nick) {
-    try { applyPlayer((await api('/me', { method: 'PATCH', body: { nick } })).player); loadWalletBoard(); } catch (e) {}
+  function onBlock(h) {
+    log(`<b>Block #${h} completed</b> on Squeekchain`);
+    if (state === 'play' && mode === 'classic') { game.dropGold(5, 0); toast(`Block #${h} landed: golden shower!`, '#82cfe0'); }
+    // announce who won the block that just finished
+    if (walletMode) setTimeout(async () => {
+      try {
+        const d = await api('/blocks');
+        const w = (d.recent || []).find(b => b.block === h);
+        if (w) {
+          const mine = player && w.id === player.address;
+          const name = mine ? 'You' : (w.nick || w.address);
+          log(`Block #${h} won by <b>${esc(name)}</b> with ${w.score}`);
+          if (state === 'play') toast(`Block #${h} won by ${name} (${w.score})`, mine ? '#9fd16f' : '#f2c14e');
+          if (mine) sfx.level();
+        }
+        if (boardTab === 'blocks') renderBlocks(d);
+      } catch (e) {}
+    }, 2500);
   }
-  async function loadWalletBoard() {
-    try {
-      const { players } = await api('/leaderboard');
-      if (!players.length) { boardMsg('No runs saved yet. Sign in and be the first!'); return; }
-      boardEl.innerHTML = '';
-      players.slice(0, 10).forEach((v, i) => {
-        const li = document.createElement('li');
-        if (player && v.id === player.address) li.className = 'me';
-        const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
-        const nm = document.createElement('span'); nm.className = 'nm';
-        if (v.holder) { const c = document.createElement('i'); c.textContent = '♛ '; c.title = 'Squeek holder'; nm.appendChild(c); }
-        nm.appendChild(document.createTextNode(v.nick || v.address));
-        nm.title = v.address;
-        const lv = document.createElement('span'); lv.className = 'lv'; lv.textContent = 'L' + v.bestLevel;
-        const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = v.bestScore;
-        li.append(rk, nm, lv, sc);
-        boardEl.appendChild(li);
-      });
-    } catch (e) { boardMsg('The board could not be loaded right now.'); }
-  }
-  async function initWallet() {
-    walletMode = true;
-    boardNote.textContent = 'Best run per wallet.';
-    renderWallet();
-    loadWalletBoard();
-    setInterval(loadWalletBoard, 60000);
-    if (session) {
-      try { applyPlayer((await api('/me')).player); } catch (e) { if (e.status === 401) setSession(null); }
-    }
-  }
-  function startWalletRun() {
-    runId = null;
-    if (walletMode && session) api('/runs', { method: 'POST' }).then(d => { runId = d.runId; }).catch(() => {});
-  }
-  async function finishWalletRun(final) {
-    if (!session) return 'Sign in with your wallet to save runs and join the board.';
-    if (!runId) return 'This run could not be saved. Check your connection.';
-    try {
-      const d = await api(`/runs/${runId}/finish`, { method: 'POST', body: { score: final, level } });
-      runId = null;
-      applyPlayer(d.player);
-      loadWalletBoard();
-      return d.isBest ? `Saved to your wallet. New personal best, you're #${d.rank}!` : `Saved to your wallet. You're #${d.rank} on the board.`;
-    } catch (e) { return e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
-  }
-
-  // ---------- shared leaderboard (artifact db) ----------
-  let db = null, uid = null, myBest = null, canPost = true;
-  const boardEl = $('board'), boardNote = $('boardNote'), nickIn = $('nick');
-  try { nickIn.value = localStorage.getItem('cheekpouch.nick') || ''; } catch (e) {}
-  function boardMsg(msg) { boardEl.innerHTML = ''; const li = document.createElement('li'); li.className = 'empty'; li.textContent = msg; boardEl.appendChild(li); }
-  function renderBoard(snap) {
-    if (snap.empty) { boardMsg('No runs posted yet. Be the first!'); return; }
-    boardEl.innerHTML = '';
-    snap.docs.forEach((d, i) => {
-      const v = d.data() || {};
-      const li = document.createElement('li');
-      if (d.id === uid) li.className = 'me';
-      const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
-      const nm = document.createElement('span'); nm.className = 'nm';
-      if (v.holder) { const c = document.createElement('i'); c.textContent = '♛ '; c.title = 'Squeek holder'; nm.appendChild(c); }
-      nm.appendChild(document.createTextNode(String(v.nick || 'A hamster').slice(0, 16)));
-      const lv = document.createElement('span'); lv.className = 'lv'; lv.textContent = 'L' + (Number(v.level) || 1);
-      const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = Number(v.score) || 0;
-      li.append(rk, nm, lv, sc);
-      boardEl.appendChild(li);
-    });
-  }
-  async function initBoard() {
-    const cl = window.claude;
-    // off claude.ai (or signed out) there is no shared store, so drop the card entirely
-    if (!cl || typeof cl.use !== 'function') { initWallet(); return; }
-    const [d, u] = await Promise.all([cl.use('db'), cl.use('user')]);
-    if (!d) { $('boardBox').hidden = true; return; }
-    db = d;
-    uid = u ? await u.id() : null;
-    if (!uid) { boardNote.textContent = 'You can see the board, but posting needs a signed-in account.'; canPost = false; }
-    const timer = setTimeout(() => { if (boardEl.querySelector('.empty')) boardMsg('The board is taking a while to load…'); }, 10000);
-    db.collection('scores').orderBy('score', 'desc').limit(10).onSnapshot(
-      snap => { if (!snap.metadata.fromCache) clearTimeout(timer); renderBoard(snap); },
-      () => { clearTimeout(timer); boardMsg('The board could not be loaded right now.'); }
-    );
-    if (uid) {
-      try { const mine = await db.doc('scores/' + uid).get(); if (mine.exists) myBest = mine.data(); } catch (e) {}
-    }
-  }
-  async function postScore(final, secs) {
-    if (walletMode) return finishWalletRun(final);
-    if (!db || !uid || !canPost) return '';
-    if (myBest && (Number(myBest.score) || 0) >= final) return `Your posted best is still ${myBest.score}.`;
-    const row = { score: final, level, secs: Math.round(secs), nick: nickIn.value.trim().slice(0, 16) || 'A hamster', holder: !!perks.crown, at: Date.now() };
-    try { await db.doc('scores/' + uid).set(row); myBest = row; return 'Posted to the board!'; }
-    catch (e) {
-      if (e && e.code === 'invalid_argument') { canPost = false; boardNote.textContent = 'You can see the board, but your access level cannot post to it.'; return 'Your access level can view the board but not post to it.'; }
-      return 'Could not post to the board. Your score is still saved on this device.';
-    }
-  }
-  let nickTimer = null;
-  nickIn.addEventListener('input', () => {
-    try { localStorage.setItem('cheekpouch.nick', nickIn.value); } catch (e) {}
-    clearTimeout(nickTimer);
-    nickTimer = setTimeout(async () => {
-      const nick = nickIn.value.trim().slice(0, 16) || 'A hamster';
-      if (walletMode) { if (session && player && player.nick !== nick) saveNick(nick); return; }
-      if (db && uid && canPost && myBest && myBest.nick !== nick) {
-        try { await db.doc('scores/' + uid).update({ nick }); myBest = { ...myBest, nick }; } catch (e) {}
-      }
-    }, 900);
-  });
-  nickIn.addEventListener('keydown', e => e.stopPropagation());
-  walletIn.addEventListener('keydown', e => e.stopPropagation());
-  initBoard();
 
   // ---------- his usual hours, learned from the last 7 days of real wheel stats ----------
-  // Hours are UTC on the wire and shown in each player's own time zone.
   const STATS = 'https://api.squeekchain.com/v1/measurement/stats?range=7d';
-  const FALLBACK = { start: 21, end: 8, peak: 4 }; // UTC, as seen in Squeekchain's stats in Nov 2026
-  let usual = FALLBACK;
-
-  // the longest stretch of active hours (wrapping past midnight), bridging one-hour naps
+  let usual = { start: 21, end: 8, peak: 4 }; // UTC, as seen in Squeekchain's stats in Nov 2026
   function usualWindow(work) {
     const max = Math.max(...work);
     if (!max) return null;
     const on = work.map(w => w >= max * .05);
     if (on.every(Boolean)) return null;
     const s0 = on.findIndex(v => !v);
-    let best = null, cur = null, gap = 0;
+    let bestW = null, cur = null, gap = 0;
     for (let i = 1; i <= 24; i++) {
       const h = (s0 + i) % 24;
       if (on[h]) { if (!cur) cur = { start: h, len: 0 }; cur.len += gap + 1; gap = 0; }
-      else if (cur && ++gap > 1) { if (!best || cur.len > best.len) best = cur; cur = null; gap = 0; }
+      else if (cur && ++gap > 1) { if (!bestW || cur.len > bestW.len) bestW = cur; cur = null; gap = 0; }
     }
-    if (cur && (!best || cur.len > best.len)) best = cur;
-    return best && { start: best.start, end: (best.start + best.len) % 24, peak: work.indexOf(max) };
+    if (cur && (!bestW || cur.len > bestW.len)) bestW = cur;
+    return bestW && { start: bestW.start, end: (bestW.start + bestW.len) % 24, peak: work.indexOf(max) };
   }
   async function loadUsual() {
     try {
@@ -690,10 +629,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   }
   function usualLine() {
     if (!usual) return '';
-    if (live.ok && live.running) return 'Squeektoshi is running right now, so every bank pays ×2.';
+    if (live.ok && live.running) return 'Squeektoshi is running right now, so Free play banks pay ×2.';
     const wait = untilUsual();
-    return `Squeektoshi usually runs ${fmtHour(usual.start)}–${fmtHour(usual.end)} your time, busiest around ${fmtHour(usual.peak)}. ` +
-      (wait ? `That starts in about ${wait}.` : `That's now, so he may wake any minute.`) + ' Banks pay ×2 while he runs.';
+    return `Squeektoshi usually runs ${fmtHour(usual.start)}–${fmtHour(usual.end)} your time. ` +
+      (wait ? `That starts in about ${wait}.` : `That's now, so he may wake any minute.`);
   }
   function renderUsual() {
     const el = $('usualTxt');
@@ -701,198 +640,295 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     document.querySelectorAll('.usualSlot').forEach(n => { n.textContent = usualLine(); });
   }
 
-  // ---------- live feed ----------
-  let live = { ok: false, running: false, fresh: false, rpm: 0, speed: 0, work: 0, height: 0, progress: 0, round: '–' };
-  const logEl = $('log');
-  let logStarted = false;
-  function log(html) {
-    if (!logStarted) { logEl.innerHTML = ''; logStarted = true; }
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const d = document.createElement('div');
-    d.innerHTML = `${t} · ${html}`;
-    logEl.prepend(d);
-    while (logEl.children.length > 30) logEl.lastChild.remove();
-  }
+  // ---------- account: wallet sign-in (free EIP-4361 signature, no transaction) ----------
+  let walletMode = false, session = null, player = null;
+  try { const saved = JSON.parse(load('cheekpouch.session') || 'null'); if (saved && saved.token) session = saved; } catch (e) {}
+  const signBtn = $('signBtn'), acctWho = $('acctWho'), acctNote = $('acctNote'), nickIn = $('nick');
+  nickIn.value = load('cheekpouch.nick') || '';
 
-  async function readStatus() {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 7000);
-    try {
-      const r = await fetch(API, { cache: 'no-store', signal: ctrl.signal });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const d = await r.json();
-      const m = d.measurement || {};
-      const b = d.builder || {};
-      const p = b.projected || b.anchor || {};
-      const fresh = m.freshness === 'online';
-      const rpm = (Number(m.rpmMilli) || 0) / 1000;
-      return {
-        ok: true, fresh,
-        running: fresh && ((m.coreStatus && m.coreStatus !== 'IDLE') || rpm > 0),
-        rpm,
-        speed: Number(m.speedMmPerSecond) || 0,
-        work: Number(m.cumulativeWorkUnits) || 0,
-        epoch: m.counterEpoch,
-        height: Number(p.blockHeight) || 0,
-        progress: (Number(p.blockProgress) || 0) / 1e9,
-        round: (b.anchor && b.anchor.settledThroughRound) || p.settledThroughRound || '–'
-      };
-    } finally { clearTimeout(to); }
+  async function api(path, { method = 'GET', body } = {}) {
+    const r = await fetch(API_URL + path, {
+      method, body: body ? JSON.stringify(body) : undefined,
+      headers: { 'Content-Type': 'application/json', ...(session ? { Authorization: 'Bearer ' + session.token } : {}) },
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401 && session && !path.startsWith('/auth/')) setSession(null);
+    if (!r.ok) throw Object.assign(new Error(d.message || 'The server did not answer.'), { code: d.error, status: r.status });
+    return d;
   }
-
-  async function poll() {
+  function setSession(s) {
+    session = s; if (!s) player = null;
+    store('cheekpouch.session', s ? JSON.stringify({ token: s.token }) : null);
+    renderAccount(); renderWardrobe(); loadMissions();
+  }
+  function applyPlayer(p) {
+    player = p;
+    if (p.nick && document.activeElement !== nickIn) nickIn.value = p.nick;
+    if (p.bestScore > best) saveBest(p.bestScore);
+    renderAccount(); renderWardrobe();
+  }
+  function renderAccount() {
+    if (!walletMode) return;
+    const signedIn = !!(session && player);
+    signBtn.hidden = false;
+    acctWho.hidden = !signedIn;
+    nickIn.hidden = !signedIn;
+    if (signedIn) {
+      signBtn.textContent = 'Sign out'; signBtn.className = 'small';
+      acctWho.innerHTML = (player.perks.crown ? '<i>♛</i> ' : '') + esc(shortAddr(player.address)) +
+        ` <span class="chip">Lv ${player.hamsterLevel}</span>` + (player.streak ? ` <span class="chip">🔥 ${player.streak}</span>` : '');
+      acctNote.textContent = `Best ${player.bestScore} · ${player.runs} run${player.runs === 1 ? '' : 's'} saved`;
+    } else if (window.ethereum && window.ethereum.request) {
+      signBtn.textContent = 'Sign in with wallet'; signBtn.className = 'go go-sm';
+      acctNote.textContent = 'Save progress, join the boards, level up your hamster. Free, no transaction.';
+    } else {
+      signBtn.hidden = true;
+      acctNote.textContent = 'To save progress, open cheek-pouch.live in your wallet app\'s browser (MetaMask, Coinbase Wallet, Rainbow) and sign in.';
+    }
+  }
+  async function signIn() {
     try {
-      const next = await readStatus();
-      // a reply without block data keeps the last good block reading
-      if (!next.height && live.height) { next.height = live.height; next.progress = live.progress; next.round = live.round; }
-      if (live.ok) {
-        if (next.epoch === live.epoch && next.work > live.work) onWork(next.work - live.work);
-        if (live.height && next.height > live.height) onBlock(next.height);
-        if (next.running !== live.running) {
-          log(next.running ? '<b>Squeektoshi hopped on the wheel</b>' : 'Squeektoshi stepped off to rest');
-          if (state === 'play') toast(next.running ? 'The real hamster is running! Banks pay ×2' : 'The real hamster went to rest. Banks back to ×1', next.running ? '#9fd16f' : '#82cfe0');
-        }
-      } else {
-        log(`Connected. ${next.running ? '<b>He is running</b>' : 'He is resting'} at block ${next.height}.`);
-      }
-      live = next;
+      acctNote.textContent = 'Check your wallet…';
+      const [addr] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const { message } = await api('/auth/nonce', { method: 'POST', body: { address: addr } });
+      const hexMsg = '0x' + [...new TextEncoder().encode(message)].map(b => b.toString(16).padStart(2, '0')).join('');
+      const signature = await window.ethereum.request({ method: 'personal_sign', params: [hexMsg, addr] });
+      const d = await api('/auth/verify', { method: 'POST', body: { message, signature } });
+      setSession({ token: d.token });
+      applyPlayer(d.player);
+      const typed = nickIn.value.trim();
+      if (typed && typed !== d.player.nick) patchMe({ nick: typed });
+      loadBoard(); loadDaily();
     } catch (e) {
-      if (live.ok || !logStarted) log('Feed unreachable, retrying');
-      live = { ...live, ok: false, running: false, fresh: false };
-    }
-    renderLive();
-    if (state === 'ready' || state === 'over') renderBet();
-  }
-
-  function renderLive() {
-    const pill = $('pill'), txt = $('pillText');
-    if (!live.ok) { pill.className = 'pill off'; txt.textContent = 'Feed offline'; }
-    else if (!live.fresh) { pill.className = 'pill off'; txt.textContent = 'Stale reading'; }
-    else if (live.running) { pill.className = 'pill run'; txt.textContent = 'Running'; }
-    else { pill.className = 'pill idle'; txt.textContent = 'Asleep'; }
-    renderUsual();
-    if (!live.ok) return;
-    $('lvRpm').innerHTML = `${live.rpm.toFixed(1)} <small>rpm · ${(live.speed / 1000).toFixed(2)} m/s</small>`;
-    $('lvWork').textContent = live.work.toLocaleString();
-    $('lvRound').textContent = '#' + live.round;
-    $('lvHeight').textContent = '#' + (live.height + 1);
-    $('lvProg').textContent = (live.progress * 100).toFixed(2) + '%';
-    $('lvBar').style.width = (live.progress * 100).toFixed(2) + '%';
-  }
-
-  function onWork(delta) {
-    log(`Real wheel logged <b>+${delta} work</b>`);
-    if (state === 'play') {
-      const n = Math.min(3, Math.max(1, Math.ceil(delta / 5)));
-      for (let i = 0; i < n; i++) dropFromFlower('gold', i * 0.5);
-      toast(`Real wheel +${delta} work: golden seed${n > 1 ? 's' : ''} incoming!`, '#f2c14e');
+      renderAccount();
+      acctNote.textContent = e && e.code === 4001 ? 'Sign-in cancelled in your wallet.' : (e && e.message) || 'Sign-in failed. Try again.';
     }
   }
-  function onBlock(h) {
-    log(`<b>Block #${h} completed</b> on Squeekchain`);
-    if (state === 'play') {
-      for (let i = 0; i < 5; i++) dropFromFlower('gold', i * 0.3, i);
-      toast(`Block #${h} landed: golden shower!`, '#82cfe0');
-    }
+  signBtn.onclick = () => {
+    if (session) { api('/auth/logout', { method: 'POST' }).catch(() => {}); setSession(null); loadBoard(); return; }
+    signIn();
+  };
+  async function patchMe(body) {
+    try { applyPlayer((await api('/me', { method: 'PATCH', body })).player); loadBoard(); return true; }
+    catch (e) { $('wardrobeNote').textContent = e.message; return false; }
   }
+  let nickTimer = null;
+  nickIn.addEventListener('input', () => {
+    store('cheekpouch.nick', nickIn.value);
+    clearTimeout(nickTimer);
+    nickTimer = setTimeout(() => {
+      const nick = nickIn.value.trim().slice(0, 16);
+      if (walletMode) { if (nick && session && player && player.nick !== nick) patchMe({ nick }); return; }
+      if (db && uid && canPost && myBest && myBest.nick !== nick) db.doc('scores/' + uid).update({ nick: nick || 'A hamster' }).catch(() => {});
+    }, 900);
+  });
+  nickIn.addEventListener('keydown', e => e.stopPropagation());
 
-  // ---------- bonus bet ----------
-  let call = 'none', callOdds = { awake: 1, asleep: 1 };
-  function oddsNow() { return live.running ? { awake: 1.25, asleep: 2 } : { awake: 2, asleep: 1.25 }; }
-  function betHtml() {
-    const o = oddsNow();
-    const off = !live.ok || !live.fresh ? 'disabled' : '';
-    return `<div class="bet">
-      <p><b>Bonus bet (optional):</b> when your run ends, will the real hamster be on his wheel?</p>
-      <div class="calls" role="group" aria-label="Bonus bet">
-        <button type="button" data-call="awake" aria-pressed="${call === 'awake'}" ${off}>Running<span>score ×${o.awake}</span></button>
-        <button type="button" data-call="asleep" aria-pressed="${call === 'asleep'}" ${off}>Asleep<span>score ×${o.asleep}</span></button>
-        <button type="button" data-call="none" aria-pressed="${call === 'none'}">No bet<span>score ×1</span></button>
-      </div>
-      <p>A wrong guess costs a quarter of your score.</p>
-    </div>`;
+  // ---------- leaderboards ----------
+  const boardEl = $('board'), boardNote = $('boardNote');
+  let boardTab = load('cheekpouch.board') || 'daily';
+  function boardMsg(msg) { boardEl.innerHTML = ''; const li = document.createElement('li'); li.className = 'empty'; li.textContent = msg; boardEl.appendChild(li); }
+  function boardRows(rows, scoreKey, levelKey) {
+    boardEl.innerHTML = '';
+    rows.slice(0, 10).forEach((v, i) => {
+      const li = document.createElement('li');
+      if (player && v.id === player.address) li.className = 'me';
+      const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
+      const nm = document.createElement('span'); nm.className = 'nm';
+      if (v.holder) { const c = document.createElement('i'); c.textContent = '♛ '; c.title = 'Squeek holder'; nm.appendChild(c); }
+      nm.appendChild(document.createTextNode(v.nick || v.address));
+      if (v.streak > 1) { const st = document.createElement('i'); st.textContent = ` 🔥${v.streak}`; st.title = `${v.streak}-day streak`; nm.appendChild(st); }
+      nm.title = v.address;
+      const lv = document.createElement('span'); lv.className = 'lv'; lv.textContent = levelKey ? 'L' + v[levelKey] : '';
+      const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = v[scoreKey];
+      li.append(rk, nm, lv, sc);
+      boardEl.appendChild(li);
+    });
   }
-  function renderBet() {
-    const slot = document.getElementById('betSlot');
-    if (slot) slot.innerHTML = betHtml();
+  function renderBlocks(d) {
+    const box = $('blockNow');
+    box.hidden = false;
+    const c = d.current;
+    if (!c) { box.textContent = 'Squeekchain did not answer. Try again in a moment.'; boardMsg(''); return; }
+    const lead = c.leader;
+    const mine = lead && player && lead.id === player.address;
+    box.innerHTML = `<b>Block #${c.block}</b> is being mined. ` + (lead
+      ? `Leader: <span class="gold">${esc(mine ? 'you' : lead.nick || lead.address)}</span> with <b>${lead.score}</b>. ${mine ? 'Hold on until it lands.' : 'Beat it to take the block.'}`
+      : 'No runs yet. The first saved run takes it.');
+    if (!d.recent.length) { boardMsg('No blocks won yet.'); return; }
+    boardRows(d.recent.map(b => ({ ...b, rank: b.block })), 'score');
+    [...boardEl.children].forEach((li, i) => { li.firstChild.textContent = '#' + d.recent[i].block; li.style.gridTemplateColumns = 'auto minmax(0,1fr) auto'; li.children[2].remove(); });
   }
-  $('card').addEventListener('click', e => {
-    const b = e.target.closest('[data-call]');
-    if (!b || b.disabled) return;
-    call = b.dataset.call; renderBet();
+  async function loadBoard() {
+    if (!walletMode) return;
+    document.querySelectorAll('#boardTabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.board === boardTab));
+    $('blockNow').hidden = boardTab !== 'blocks';
+    try {
+      if (boardTab === 'daily') {
+        const d = dailyInfo && dailyInfo.day === todayUTC() ? await refreshDaily() : await loadDaily();
+        if (!d) { boardMsg('The board could not be loaded right now.'); return; }
+        if (!d.top.length) boardMsg('No Daily Burrow runs today yet. Be the first!'); else boardRows(d.top, 'score', 'level');
+        boardNote.textContent = `Daily Burrow, ${fmtDay(d.day)}. Resets at midnight UTC.` + (d.me ? ` You're #${d.me.rank}.` : '');
+      } else if (boardTab === 'all') {
+        const { players } = await api('/leaderboard');
+        if (!players.length) boardMsg('No runs saved yet. Sign in and be the first!'); else boardRows(players, 'bestScore', 'bestLevel');
+        boardNote.textContent = 'Best run per wallet, any mode.';
+      } else {
+        renderBlocks(await api('/blocks'));
+        boardNote.textContent = 'Every Squeekchain block goes to the best score set while it was mined.';
+      }
+    } catch (e) { boardMsg('The board could not be loaded right now.'); }
+  }
+  $('boardTabs').addEventListener('click', e => {
+    const b = e.target.closest('[data-board]');
+    if (!b) return;
+    boardTab = b.dataset.board; store('cheekpouch.board', boardTab);
+    if (walletMode) loadBoard();
   });
 
+  // claude.ai copy: a shared board in the artifact's own store (classic scores only)
+  let db = null, uid = null, myBest = null, canPost = true;
+  async function initClaudeBoard(cl) {
+    const [d, u] = await Promise.all([cl.use('db'), cl.use('user')]);
+    $('missionBox').hidden = true; $('wardrobeBox').hidden = true; $('boardTabs').hidden = true;
+    if (!d) { $('boardBox').hidden = true; return; }
+    db = d;
+    uid = u ? await u.id() : null;
+    boardNote.textContent = uid ? 'Your best Free play run is posted when it beats your last one.' : 'You can see the board, but posting needs a signed-in account.';
+    if (!uid) canPost = false;
+    const timer = setTimeout(() => { if (boardEl.querySelector('.empty')) boardMsg('The board is taking a while to load…'); }, 10000);
+    db.collection('scores').orderBy('score', 'desc').limit(10).onSnapshot(snap => {
+      if (!snap.metadata.fromCache) clearTimeout(timer);
+      if (snap.empty) { boardMsg('No runs posted yet. Be the first!'); return; }
+      boardRows(snap.docs.map(x => { const v = x.data() || {}; return { id: x.id, nick: String(v.nick || 'A hamster').slice(0, 16), address: '', holder: !!v.holder, score: Number(v.score) || 0, level: Number(v.level) || 1 }; }), 'score', 'level');
+    }, () => { clearTimeout(timer); boardMsg('The board could not be loaded right now.'); });
+    if (uid) { try { const mine = await db.doc('scores/' + uid).get(); if (mine.exists) myBest = mine.data(); } catch (e) {} }
+  }
+  async function postClaudeScore(final, secs) {
+    if (!db || !uid || !canPost) return '';
+    if (myBest && (Number(myBest.score) || 0) >= final) return `Your posted best is still ${myBest.score}.`;
+    const row = { score: final, level: game.s.level, secs: Math.round(secs), nick: nickIn.value.trim().slice(0, 16) || 'A hamster', holder: false, at: Date.now() };
+    try { await db.doc('scores/' + uid).set(row); myBest = row; return 'Posted to the board!'; }
+    catch (e) {
+      if (e && e.code === 'invalid_argument') { canPost = false; return 'Your access level can view the board but not post to it.'; }
+      return 'Could not post to the board. Your score is still saved on this device.';
+    }
+  }
+
+  // ---------- Daily Burrow ----------
+  let dailyInfo = null, ghostData = null, ghostOn = load('cheekpouch.ghost') !== '0';
+  const params = new URLSearchParams(location.search);
+  const challenge = (() => {
+    const m = (params.get('challenge') || '').match(/^(\d{4}-\d{2}-\d{2})-(\d{1,7})$/);
+    return m ? { day: m[1], score: Number(m[2]), by: (params.get('by') || '').slice(0, 16) || 'A friend' } : null;
+  })();
+  async function loadDaily(day) {
+    try {
+      const d = await api('/daily' + (day ? '?day=' + day : ''));
+      if (!day || day === todayUTC()) dailyInfo = d;
+      return d;
+    } catch (e) { return null; }
+  }
+  async function refreshDaily() { return loadDaily(); }
+  async function loadGhost(day) {
+    try { ghostData = (await api('/daily/ghost?day=' + day)).ghost; } catch (e) { ghostData = null; }
+    if (state === 'ready' || state === 'over') renderModeBody();
+  }
+
+  // ---------- missions ----------
+  function fmtLeft(iso) {
+    const ms = new Date(iso) - Date.now();
+    const h = Math.floor(ms / 3600000), d = Math.floor(h / 24);
+    return d >= 1 ? `resets in ${d} d ${h % 24} h` : `resets in ${h} h ${Math.floor(ms / 60000) % 60} min`;
+  }
+  function missionList(el, list) {
+    el.innerHTML = '';
+    for (const m of list) {
+      const li = document.createElement('li');
+      if (m.done) li.className = 'done';
+      li.innerHTML = `<div class="top"><span>${esc(m.title)}</span><span>${m.done ? '✓ +' + m.xp + ' XP' : `${m.progress.toLocaleString()}/${m.goal.toLocaleString()} · ${m.xp} XP`}</span></div>
+        <div class="mbar"><span style="width:${Math.min(100, m.progress / m.goal * 100)}%"></span></div>`;
+      el.appendChild(li);
+    }
+  }
+  async function loadMissions() {
+    if (!walletMode) return;
+    try {
+      const d = await api('/missions');
+      missionList($('dailyMissions'), d.daily);
+      missionList($('weeklyMissions'), d.weekly);
+      $('dailyReset').textContent = fmtLeft(d.resets.daily);
+      $('weeklyReset').textContent = fmtLeft(d.resets.weekly);
+      $('missionNote').textContent = session ? '' : 'Sign in to track missions and earn XP.';
+    } catch (e) { $('missionNote').textContent = 'Missions could not be loaded right now.'; }
+  }
+
+  // ---------- wardrobe ----------
+  const FUR = { classic: ['#e39a5d', '#c97b42'], cocoa: ['#9c6644', '#7a4b2e'], snow: ['#f1ece4', '#d6cabb'], grey: ['#a8a29a', '#857e76'], golden: ['#f2c14e', '#cf9a2a'] };
+  let localEquip = { hat: 'none', fur: 'classic', extra: 'none' };
+  const equipNow = () => (player ? player.equip : localEquip);
+  const pctx = $('preview').getContext('2d');
+  function renderWardrobe() {
+    pctx.setTransform(1, 0, 0, 1, 0, 0);
+    pctx.clearRect(0, 0, 240, 200);
+    pctx.setTransform(2.1, 0, 0, 2.1, 112, 185);
+    drawHamsterShape(pctx, { held: 0, step: 0, face: 1, gold: false }, equipNow());
+    const st = $('hamStats'), slots = $('slots'), note = $('wardrobeNote');
+    if (!walletMode) return;
+    if (!player) {
+      st.innerHTML = '<span>Sign in to level up your hamster, keep a streak and unlock outfits.</span>';
+      $('xpFill').style.width = '0%';
+    } else {
+      const p = player, span = p.xpNextLevel - p.xpLevelStart;
+      st.innerHTML = `<span><b>Level ${p.hamsterLevel}</b> · ${(p.xp - p.xpLevelStart).toLocaleString()}/${span.toLocaleString()} XP</span>
+        <span>🔥 Streak <b>${p.streak}</b> day${p.streak === 1 ? '' : 's'} (best ${p.bestStreak})</span>
+        <span>⛏ Blocks won <b>${p.blocksWon}</b></span>
+        <span>🏅 Daily podiums <b>${p.podiums}</b></span>`;
+      $('xpFill').style.width = Math.min(100, (p.xp - p.xpLevelStart) / span * 100) + '%';
+    }
+    const lvl = player ? player.hamsterLevel : 1, perks = player ? player.perks : {};
+    const names = { hat: 'Hat', fur: 'Fur', extra: 'Extra' };
+    slots.innerHTML = Object.keys(names).map(slot => `<div class="slot"><span class="k">${names[slot]}</span><div class="items">` +
+      COSMETICS[slot].map(c => {
+        const open = player ? SIM.unlocked(c, lvl, perks) : c.lvl === 1;
+        const need = c.perk ? { crown: 'Hold 1+ Squeek', gold: 'Hold 10+ Squeeks', shades: 'Stake 1+ Squeek', scarf: 'Own a level 2+ Squeek' }[c.perk] : `Hamster level ${c.lvl}`;
+        return `<button type="button" data-slot="${slot}" data-item="${c.id}" aria-pressed="${equipNow()[slot] === c.id}" ${open && player ? '' : 'disabled'} title="${open ? c.name : 'Locked: ' + need}">${open ? '' : '🔒 '}${esc(c.name)}</button>`;
+      }).join('') + '</div></div>').join('');
+    if (!note.textContent || !player) note.textContent = player ? '' : 'Squeek holders unlock the crown, golden fur, shades and scarf.';
+  }
+  $('slots').addEventListener('click', async e => {
+    const b = e.target.closest('[data-item]');
+    if (!b || b.disabled || !player) return;
+    $('wardrobeNote').textContent = '';
+    await patchMe({ equip: { [b.dataset.slot]: b.dataset.item } });
+  });
+
+  async function initWallet() {
+    walletMode = true;
+    renderAccount(); renderWardrobe();
+    if (session) { try { applyPlayer((await api('/me')).player); } catch (e) { if (e.status === 401) setSession(null); } }
+    await loadDaily();
+    if (challenge) await loadGhost(challenge.day); else if (dailyInfo) loadGhost(dailyInfo.day);
+    loadBoard(); loadMissions();
+    setInterval(() => { if (state !== 'play') { loadBoard(); loadMissions(); } }, 60000);
+    if (state === 'ready') renderModeBody();
+  }
+
   // ---------- game state ----------
-  let state = 'ready'; // ready | play | paused | settle | over
-  let ham, items, parts, texts, toasts, paw, t, hearts, score, banks, nextSeed, nextPebble, nextPaw, queue, wobble;
-  let wheelAngle = 0, hint = null, firstBankAt = -1, level = 1, banner = null, doublePaw = false, lastPawSide = 1;
-
-  function reset() {
-    ham = { x: 330, y: GROUND, vy: 0, ground: true, held: [], face: 1, inv: 0, step: 0, squash: 0 };
-    items = []; parts = []; texts = []; toasts = []; queue = [];
-    wobble = FLOWERS.map(() => 0);
-    paw = null; t = 0; hearts = 3; score = 0; banks = 0; firstBankAt = -1;
-    level = 1; banner = null; doublePaw = false;
-    nextSeed = 0.3; nextPebble = 5; nextPaw = 16;
-  }
-  reset();
-
-  function mult() { return live.ok && live.running ? 2 : 1; }
-  function bankValue(held) {
-    const n = held.length;
-    const golds = held.filter(h => h === 'gold').length;
-    return (n * (n + 1) / 2 + golds * 20) * mult();
-  }
-
-  // seeds shake loose from a sunflower so you can see where they come from
-  function dropFromFlower(kind, delay = 0, idx) {
-    const i = idx != null ? idx % FLOWERS.length : Math.floor(Math.random() * FLOWERS.length);
-    queue.push({ kind, i, at: t + delay + 0.35 });
-    wobble[i] = Math.max(wobble[i], 0.35 + delay);
-  }
-  function spawn(kind, x, y) {
-    const it = { kind, x, y, vx: 0, vy: 0, rot: Math.random() * 6, spin: (Math.random() - .5) * 5, ttl: 0 };
-    if (kind === 'seed') it.vy = 110 + Math.random() * 60 + Math.min(80, t / LEVEL_SECS * 10);
-    if (kind === 'gold') it.vy = 95;
-    if (kind === 'pebble') { it.vy = Math.min(560, 190 + Math.random() * 60 + t / LEVEL_SECS * 40); it.r = 14; it.spin *= 2; }
-    items.push(it);
-    return it;
-  }
+  let state = 'ready'; // ready | starting | play | paused | settle | over
+  let mode = load('cheekpouch.mode') === 'classic' ? 'classic' : 'daily';
+  let game = SIM.create({ seed: 1 }), ghost = null, run = null, rec = [], lastBits = -1, acc = 0;
+  let parts = [], texts = [], toasts = [], banner = null, hint = null, firstBankAt = -1, wheelAngle = 0, lastResult = null;
 
   function toast(msg, color) { toasts.push({ msg, color, life: 3.2 }); if (toasts.length > 3) toasts.shift(); }
   function float(x, y, msg, color, size = 22) { texts.push({ x, y, msg, color, size, life: 1.3 }); }
 
-  function hurt(why) {
-    if (ham.inv > 0) return;
-    hearts--; ham.inv = 1.5; sfx.hit();
-    // half the haul spills onto the ground, where it can be picked back up
-    const spill = Math.ceil(ham.held.length / 2);
-    const lost = ham.held.splice(ham.held.length - spill, spill);
-    lost.forEach((k, i) => {
-      const it = spawn(k, ham.x, ham.y - R);
-      it.vx = (i % 2 ? 1 : -1) * (80 + Math.random() * 160); it.vy = -260 - Math.random() * 120; it.bouncy = true; it.grace = 0.5;
-    });
-    float(ham.x, ham.y - 72, spill ? `${why}! dropped ${spill}` : `${why}!`, '#ec6a4f');
-    if (hearts <= 0) endRun();
-  }
-
-  function bank() {
-    const n = ham.held.length;
-    if (!n) return;
-    const pts = bankValue(ham.held);
-    score += pts; banks++; sfx.bank(n);
-    if (firstBankAt < 0) firstBankAt = t;
-    ham.held = [];
-    float(BURROW_X + 30, GROUND - 120, `+${pts}`, '#f2c14e', 34);
-    const s = $('hudScore'); s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
-    for (let i = 0; i < 16; i++) parts.push({ x: BURROW_X, y: GROUND - 6, vx: (Math.random() - .5) * 180, vy: -140 - Math.random() * 160, life: .8, c: '#f2c14e', s: 3 });
-  }
-
   // ---------- input ----------
   const keys = { l: false, r: false, j: false };
   const KL = ['ArrowLeft', 'a', 'A'], KR = ['ArrowRight', 'd', 'D'], KJ = ['ArrowUp', 'w', 'W', ' '];
+  const bitsNow = () => (keys.l ? LEFT : 0) | (keys.r ? RIGHT : 0) | (keys.j ? JUMP : 0);
   addEventListener('keydown', e => {
-    const onButton = e.target.closest && e.target.closest('button');
+    const onButton = e.target.closest && e.target.closest('button, a, input');
     if (onButton && state !== 'play' && (e.key === ' ' || e.key === 'Enter')) return;
     if (KL.includes(e.key)) keys.l = true;
     else if (KR.includes(e.key)) keys.r = true;
@@ -919,36 +955,118 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') togglePause(); });
   addEventListener('blur', () => { keys.l = keys.r = keys.j = false; });
 
-  // ---------- flow ----------
+  // ---------- start card ----------
   const overlay = $('overlay'), card = $('card');
+  let call = 'none', callOdds = { awake: 1, asleep: 1 };
+  function oddsNow() { return live.running ? { awake: 1.25, asleep: 2 } : { awake: 2, asleep: 1.25 }; }
   function showCard(html) { card.innerHTML = html; overlay.hidden = false; }
+  const dailyReady = () => walletMode && !!dailyInfo;
+  const challengeDay = () => (challenge && challenge.day !== todayUTC() ? challenge.day : null);
+
+  function modeBodyHtml() {
+    if (mode === 'daily') {
+      if (!dailyReady()) return `<p>The Daily Burrow needs <b>cheek-pouch.live</b> and a connection to its server. Free play works here.</p>`;
+      const d = dailyInfo, past = challengeDay();
+      const g = ghostData && !(player && ghostData.id === player.address) ? ghostData : null;
+      return `<p><b>Same seeds and pebbles for everyone ${past ? 'on ' + fmtDay(past) : 'today'}.</b> Your best run counts, checked by replaying your key presses.</p>
+        <p>Golden seeds: <span class="gold">${d.golds}</span>, set by Squeektoshi's ${Number(d.work).toLocaleString()} wheel passes the day before.</p>
+        <p>${d.me ? `Your best today: <b>${d.me.score}</b> (#${d.me.rank}).` : ''} ${d.top[0] ? `Leader: <b>${esc(d.top[0].nick || d.top[0].address)}</b> with <b>${d.top[0].score}</b>.` : 'Nobody has played today yet.'}</p>
+        ${g ? `<label class="check"><input type="checkbox" id="ghostBox" ${ghostOn ? 'checked' : ''}> Race ${esc(g.nick || g.address)}'s ghost (${g.score})</label>` : ''}
+        ${past ? `<p>This is ${fmtDay(past)}'s run, so it's practice: it won't be saved.</p>` : session ? '' : '<p>Practice works signed out. <b>Sign in</b> to post your run to the board.</p>'}`;
+    }
+    const o = oddsNow(), off = !live.ok || !live.fresh ? 'disabled' : '';
+    return `<p><b>Live from Squeekchain:</b> banks pay ×2 while Squeektoshi runs, and his real wheel work drops golden seeds.</p>
+      <div class="bet">
+        <p><b>Bonus bet (optional):</b> when your run ends, will the real hamster be on his wheel? A wrong guess costs a quarter of your score.</p>
+        <div class="calls" role="group" aria-label="Bonus bet">
+          <button type="button" data-call="awake" aria-pressed="${call === 'awake'}" ${off}>Running<span>score ×${o.awake}</span></button>
+          <button type="button" data-call="asleep" aria-pressed="${call === 'asleep'}" ${off}>Asleep<span>score ×${o.asleep}</span></button>
+          <button type="button" data-call="none" aria-pressed="${call === 'none'}">No bet<span>score ×1</span></button>
+        </div>
+      </div>`;
+  }
+  function renderModeBody() {
+    const el = $('modeBody');
+    if (el) el.innerHTML = modeBodyHtml();
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === mode));
+    renderUsual();
+  }
+  function modePicker() {
+    return `<div class="modes" role="tablist" aria-label="Game mode">
+        <button type="button" role="tab" data-mode="daily" aria-selected="${mode === 'daily'}">Daily Burrow</button>
+        <button type="button" role="tab" data-mode="classic" aria-selected="${mode === 'classic'}">Free play</button>
+      </div>
+      <div class="modeBody" id="modeBody">${modeBodyHtml()}</div>`;
+  }
+  card.addEventListener('click', e => {
+    const m = e.target.closest('[data-mode]');
+    if (m) { mode = m.dataset.mode; store('cheekpouch.mode', mode); renderModeBody(); return; }
+    const c = e.target.closest('[data-call]');
+    if (c && !c.disabled) { call = c.dataset.call; renderModeBody(); }
+  });
+  card.addEventListener('change', e => { if (e.target.id === 'ghostBox') { ghostOn = e.target.checked; store('cheekpouch.ghost', ghostOn ? '1' : '0'); } });
   function introCard() {
+    const ch = challenge ? `<div class="challenge">🐹 <b>${esc(challenge.by)}</b> challenges you to beat <b>${challenge.score}</b> on the Daily Burrow of ${fmtDay(challenge.day)}.</div>` : '';
     showCard(`
       <h2>Fill your cheeks</h2>
-      <div class="steps">
+      ${ch}
+      ${tutored ? '' : `<div class="steps">
         <div><b>1. Catch</b>Run under the seeds that fall from the sunflowers.</div>
         <div><b>2. Dodge</b>Angry red pebbles knock seeds loose. Hop over the cat's paw.</div>
         <div><b>3. Bank</b>Run left into the burrow. Bigger trips pay much more.</div>
-      </div>
-      <div id="betSlot" style="width:100%">${betHtml()}</div>
+      </div>`}
+      ${modePicker()}
       <button class="go" id="startBtn" type="button">Start run</button>
       <p class="fine">Endless: it gets harder every 20 seconds. You have 3 hearts.</p>
       <p class="fine usualSlot">${usualLine()}</p>`);
     $('startBtn').onclick = start;
   }
+  if (challenge) mode = 'daily';
   introCard();
 
-  function start() {
-    reset();
-    callOdds = oddsNow();
-    if (!live.ok || !live.fresh) call = 'none';
+  // ---------- run flow ----------
+  async function start() {
+    if (state === 'starting') return;
+    if (mode === 'daily' && !dailyReady()) mode = 'classic';
     audio();
-    startWalletRun();
+    state = 'starting';
+    const btn = $('startBtn') || $('againBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+    run = { mode, saved: false, id: null, day: null, practice: false };
+    let opts;
+    if (mode === 'daily') {
+      const past = challengeDay();
+      if (past) {
+        const d = await loadDaily(past);
+        if (!d) { state = 'ready'; introCard(); toast('That challenge day could not be loaded.', '#ec6a4f'); return; }
+        opts = { seed: d.seed, goldTicks: d.goldTicks, mult: 1 }; run.day = past; run.practice = true;
+      } else if (session) {
+        try {
+          const r = await api('/runs', { method: 'POST', body: { mode: 'daily' } });
+          run.id = r.runId; run.day = r.day;
+          opts = { seed: r.seed, goldTicks: r.goldTicks, mult: 1 };
+          if (dailyInfo && dailyInfo.day !== r.day) loadDaily();
+        } catch (e) { run.practice = true; }
+      } else run.practice = true;
+      if (!opts) { opts = { seed: dailyInfo.seed, goldTicks: dailyInfo.goldTicks, mult: 1 }; run.day = dailyInfo.day; }
+      const g = ghostOn && ghostData && !(player && ghostData.id === player.address) ? ghostData : null;
+      ghost = g ? { g: SIM.create(opts), data: g, k: 0, bits: 0 } : null;
+    } else {
+      opts = { seed: (Math.random() * 4294967296) >>> 0, mult: 1 };
+      ghost = null;
+      callOdds = oddsNow();
+      if (!live.ok || !live.fresh) call = 'none';
+      if (walletMode && session) api('/runs', { method: 'POST', body: { mode: 'classic' } }).then(r => { if (run) run.id = r.runId; }).catch(() => {});
+    }
+    game = SIM.create(opts);
+    rec = []; lastBits = -1; acc = 0;
+    parts = []; texts = []; toasts = []; banner = null; hint = null; firstBankAt = -1;
+    $('hudMode').textContent = mode === 'daily' ? `Daily Burrow ${fmtDay(run.day)}${run.practice ? ' · practice' : ''}` : 'Free play';
     state = 'play';
     overlay.hidden = true;
     last = performance.now();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    if (call !== 'none') log(`You bet <b>${call === 'awake' ? 'running' : 'asleep'}</b> at the buzzer (×${callOdds[call]})`);
+    if (mode === 'classic' && call !== 'none') log(`You bet <b>${call === 'awake' ? 'running' : 'asleep'}</b> at the buzzer (×${callOdds[call]})`);
   }
 
   function togglePause() {
@@ -966,11 +1084,11 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     state = 'settle';
     keys.l = keys.r = keys.j = false;
     sfx.over();
-    const leftover = ham.held.length;
-    if (!tutored && banks > 0) markTutored();
-    showCard(`<h2>Out of hearts</h2><p>Checking the real wheel…</p>`);
+    const s = game.s, leftover = s.ham.held.length, secs = s.t;
+    if (!tutored && s.banks > 0) markTutored();
+    showCard(`<h2>Out of hearts</h2><p>${mode === 'daily' && run.id ? 'Replaying your run on the server…' : 'Saving your run…'}</p>`);
     let verdict = 'none', factor = 1, note = '';
-    if (call !== 'none') {
+    if (mode === 'classic' && call !== 'none') {
       try {
         const now = await readStatus();
         if (!now.fresh) { verdict = 'void'; note = 'The feed reading was stale, so the bet was cancelled.'; }
@@ -982,138 +1100,187 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         }
       } catch (e) { verdict = 'void'; note = 'The feed was unreachable, so the bet was cancelled.'; }
     }
-    const final = Math.round(score * factor);
+    const final = Math.round(s.score * factor);
     const isBest = final > best;
     if (isBest) saveBest(final);
-    const postMsg = await postScore(final, t);
-    if (call !== 'none') log(`Bonus bet ${verdict === 'win' ? '<b>won</b>' : verdict === 'lose' ? 'lost' : 'cancelled'}`);
+    let res = null, msg = '';
+    if (walletMode) {
+      if (!session) msg = 'Sign in with your wallet to save runs, earn XP and join the boards.';
+      else if (run.practice) msg = mode === 'daily' && challengeDay() ? 'Practice run on a past day, so it was not saved.' : 'This run was practice, so it was not saved.';
+      else if (!run.id) msg = 'This run could not be saved. Check your connection.';
+      else {
+        try {
+          const body = mode === 'daily'
+            ? { score: final, level: s.level, ticks: s.tick, inputs: rec }
+            : { score: final, level: s.level, stats: s.stats };
+          res = await api(`/runs/${run.id}/finish`, { method: 'POST', body });
+          applyPlayer(res.player);
+        } catch (e) { msg = e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
+      }
+    } else msg = await postClaudeScore(final, secs);
+    if (mode === 'classic' && call !== 'none') log(`Bonus bet ${verdict === 'win' ? '<b>won</b>' : verdict === 'lose' ? 'lost' : 'cancelled'}`);
     log(`Run over, <b>${final}</b> points`);
+    lastResult = { mode, day: run.day, score: final, level: s.level, secs, rank: res && res.daily ? res.daily.rank : null, practice: run.practice };
     state = 'over';
-    const betTxt = call === 'none' ? 'none' : verdict === 'win' ? `won ×${factor}` : verdict === 'lose' ? 'lost ×0.75' : 'cancelled';
+    if (res && res.levelUp) { sfx.level(); }
+    endCard({ s, final, factor, verdict, note, leftover, isBest, res, msg, secs });
+    if (walletMode) { loadBoard(); loadMissions(); if (mode === 'daily') loadGhost(run.day); }
+  }
+
+  function endCard({ s, final, verdict, factor, note, leftover, isBest, res, msg, secs }) {
+    const betRow = mode === 'classic' ? `<dt>Bonus bet</dt><dd>${call === 'none' ? 'none' : verdict === 'win' ? `won ×${factor}` : verdict === 'lose' ? 'lost ×0.75' : 'cancelled'}</dd>` : '';
+    const badges = [];
+    let xpHtml = '';
+    if (res) {
+      const p = res.player, span = p.xpNextLevel - p.xpLevelStart;
+      xpHtml = `<div class="xp"><span><b>+${res.xpGained} XP</b>${res.streakXp ? ` (incl. +${res.streakXp} streak bonus)` : ''} · Hamster level ${p.hamsterLevel}${res.levelUp ? ' <b>LEVEL UP!</b>' : ''}</span>
+        <div class="xpbar"><span style="width:${Math.min(100, (p.xp - p.xpLevelStart) / span * 100)}%"></span></div></div>`;
+      if (res.daily) badges.push(`<span class="badge gold">#${res.daily.rank} today${res.daily.improved ? ', new daily best' : ''}</span>`);
+      if (res.block) badges.push(`<span class="badge${res.block.lead ? ' gold' : ''}">${res.block.lead ? `You lead block #${res.block.block}` : `Block #${res.block.block}: beat ${res.block.best}`}</span>`);
+      if (res.streak > 1) badges.push(`<span class="badge">🔥 ${res.streak}-day streak</span>`);
+      if (res.isBest) badges.push(`<span class="badge gold">New personal best</span>`);
+      for (const m of res.missionsDone) badges.push(`<span class="badge gold">✓ ${esc(m.title)} +${m.xp} XP</span>`);
+      if (res.levelUp) {
+        const fresh = Object.values(COSMETICS).flat().filter(c => c.lvl === res.levelUp);
+        if (fresh.length) badges.push(`<span class="badge gold">Unlocked: ${fresh.map(c => esc(c.name)).join(', ')}</span>`);
+      }
+    }
+    const canChallenge = mode === 'daily' && lastResult.day;
     showCard(`
       <h2>Out of hearts</h2>
       <dl class="tally">
-        <dt>Reached</dt><dd>level ${level} in ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}</dd>
-        <dt>Banked in ${banks} trip${banks === 1 ? '' : 's'}</dt><dd>${score}</dd>
+        <dt>Mode</dt><dd>${mode === 'daily' ? `Daily Burrow ${fmtDay(lastResult.day)}` : 'Free play'}</dd>
+        <dt>Reached</dt><dd>level ${s.level} in ${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}</dd>
+        <dt>Banked in ${s.banks} trip${s.banks === 1 ? '' : 's'}</dt><dd>${s.score}</dd>
         ${leftover ? `<dt>Still in cheeks (lost)</dt><dd>${leftover} seed${leftover === 1 ? '' : 's'}</dd>` : ''}
-        <dt>Bonus bet</dt><dd>${betTxt}</dd>
+        ${betRow}
         <dt class="total">Final score</dt><dd class="total">${final}</dd>
       </dl>
-      ${note || isBest || postMsg ? `<p class="fine">${note}${isBest ? ' New best on this device!' : ''} ${postMsg}</p>` : ''}
-      ${banks > 0 && score / banks < 15 ? '<p class="fine">Tip: wait until your cheeks hold 8 or more before heading home. 8 seeds pay 36, two trips of 4 pay only 20.</p>' : ''}
-      <p class="fine usualSlot">${usualLine()}</p>
-      <div id="betSlot" style="width:100%">${betHtml()}</div>
-      <button class="go" type="button" id="againBtn">Run again</button>`);
+      ${xpHtml || badges.length ? `<div class="rewards">${xpHtml}<div class="badges">${badges.join('')}</div></div>` : ''}
+      <p class="fine">${esc(note)}${isBest && !res ? ' New best on this device!' : ''} ${esc(msg)}</p>
+      ${s.banks > 0 && s.score / s.banks < 15 ? '<p class="fine">Tip: wait until your cheeks hold 8 or more before heading home. 8 seeds pay 36, two trips of 4 pay only 20.</p>' : ''}
+      <div class="share">
+        <button type="button" class="small" id="shareBtn">Share card</button>
+        ${canChallenge ? `<a class="small" id="xBtn" target="_blank" rel="noopener" href="${xIntent()}">Post on X</a>
+        <button type="button" class="small" id="copyBtn">Copy challenge link</button>` : ''}
+      </div>
+      ${modePicker()}
+      <button class="go" type="button" id="againBtn">Run again</button>
+      <p class="fine usualSlot">${usualLine()}</p>`);
     $('againBtn').onclick = start; $('againBtn').focus();
+    $('shareBtn').onclick = shareCard;
+    if ($('copyBtn')) $('copyBtn').onclick = copyChallenge;
   }
 
-  // ---------- update ----------
-  function update(dt) {
-    t += dt;
-    const d = t / LEVEL_SECS; // smooth difficulty, one unit per level
-    const lv = 1 + Math.floor(d);
-    if (lv > level) {
-      level = lv;
-      banner = { title: `Level ${level}`, sub: LEVEL_NEWS[level] || 'Faster still', life: 2.8 };
-      log(`Reached <b>level ${level}</b>`); sfx.level();
-    }
-    const rate = (live.ok && live.running ? 2 + Math.min(live.rpm / 40, 1) * 1.5 : 1.8) + Math.min(1, (level - 1) * .12);
-    nextSeed -= dt;
-    if (nextSeed <= 0) { dropFromFlower('seed'); nextSeed = (0.6 + Math.random() * 0.7) / rate; }
-    for (let i = queue.length - 1; i >= 0; i--) {
-      const q = queue[i];
-      if (t >= q.at) { spawn(q.kind, FLOWERS[q.i] + (Math.random() - .5) * 30, 40); queue.splice(i, 1); }
-    }
-    nextPebble -= dt;
-    if (nextPebble <= 0) {
-      const r = Math.random();
-      const count = level >= 5 ? (r < .3 ? 3 : r < .6 ? 2 : 1) : level >= 3 ? (r < .35 ? 2 : 1) : 1;
-      const x0 = 150 + Math.random() * (600 - (count - 1) * 85);
-      for (let i = 0; i < count; i++) spawn('pebble', x0 + i * 85, -20 - i * 30);
-      nextPebble = Math.max(.55, (3 + Math.random() * 1.6) / (1 + d * .45));
-    }
-    nextPaw -= dt;
-    if (nextPaw <= 0 && !paw) {
-      const side = doublePaw ? -lastPawSide : (Math.random() < .5 ? -1 : 1);
-      paw = { side, warn: Math.max(.75, 1.3 - .06 * d), speed: Math.min(1300, 700 + 60 * d), x: 0 };
-      lastPawSide = side; sfx.warn();
-      if (doublePaw) { doublePaw = false; nextPaw = Math.max(4.5, 13 - 1.2 * d) + Math.random() * 4; }
-      else if (level >= 6 && Math.random() < .5) { doublePaw = true; nextPaw = 0; }
-      else nextPaw = Math.max(4.5, 13 - 1.2 * d) + Math.random() * 4;
-    }
-    wobble = wobble.map(w => Math.max(0, w - dt));
+  // ---------- challenge links and share cards ----------
+  function challengeUrl() {
+    const r = lastResult, by = (player && player.nick) || nickIn.value.trim() || '';
+    return `${SITE}?challenge=${r.day}-${r.score}` + (by ? `&by=${encodeURIComponent(by.slice(0, 16))}` : '');
+  }
+  function shareText() {
+    const r = lastResult;
+    return r.mode === 'daily'
+      ? `I scored ${r.score} on the Cheek Pouch Daily Burrow (${fmtDay(r.day)}), level ${r.level}${r.rank ? `, #${r.rank} today` : ''}. Beat me 🐹`
+      : `I scored ${r.score} in Cheek Pouch, a hamster game run by Squeektoshi's real wheel on Squeekchain. Level ${r.level} 🐹`;
+  }
+  function xIntent() { return `https://x.com/intent/post?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(lastResult.mode === 'daily' ? challengeUrl() : SITE)}`; }
+  async function copyChallenge() {
+    const url = challengeUrl(), b = $('copyBtn');
+    try { await navigator.clipboard.writeText(url); b.textContent = 'Link copied'; }
+    catch (e) { prompt('Copy this link', url); }
+  }
+  function cardCanvas() {
+    const r = lastResult, c = document.createElement('canvas');
+    c.width = 1200; c.height = 630;
+    const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 0, 630);
+    g.addColorStop(0, '#0e1626'); g.addColorStop(.78, '#2f3a58'); g.addColorStop(.78, '#3d6544'); g.addColorStop(.8, '#4a3627'); g.addColorStop(1, '#33251b');
+    x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
+    const rr = SIM.rng(r.score + 7);
+    x.fillStyle = 'rgba(246,234,215,.7)';
+    for (let i = 0; i < 80; i++) { x.beginPath(); x.arc(rr() * 1200, rr() * 420, rr() * 1.8 + .4, 0, 7); x.fill(); }
+    x.textBaseline = 'alphabetic'; x.textAlign = 'left';
+    x.font = '96px "Lilita One", sans-serif'; x.fillStyle = '#7a4a1c'; x.fillText('Cheek Pouch', 64, 150); x.fillStyle = '#f2c14e'; x.fillText('Cheek Pouch', 64, 144);
+    x.font = '600 30px "JetBrains Mono", monospace'; x.fillStyle = '#82cfe0';
+    x.fillText(r.mode === 'daily' ? `DAILY BURROW · ${fmtDay(r.day).toUpperCase()}` : 'FREE PLAY', 68, 206);
+    x.font = '170px "Lilita One", sans-serif'; x.fillStyle = '#f6ead7'; x.fillText(String(r.score), 60, 380);
+    x.font = '600 32px "JetBrains Mono", monospace'; x.fillStyle = '#bda68c';
+    x.fillText(`Level ${r.level}${r.rank ? ` · #${r.rank} today` : ''}${player && player.streak > 1 ? ` · ${player.streak}-day streak` : ''}`, 68, 432);
+    x.fillStyle = '#f6ead7'; x.font = '700 30px "Baloo 2", sans-serif';
+    x.fillText(r.mode === 'daily' ? 'Beat me at cheek-pouch.live' : 'Play at cheek-pouch.live', 68, 560);
+    x.save(); x.translate(900, 488); x.scale(5.6, 5.6);
+    drawHamsterShape(x, { held: 10, step: 0, face: 1, gold: false }, equipNow());
+    x.restore();
+    return c;
+  }
+  async function shareCard() {
+    const b = $('shareBtn');
+    const c = cardCanvas();
+    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    const file = new File([blob], `cheek-pouch-${lastResult.score}.png`, { type: 'image/png' });
+    const url = lastResult.mode === 'daily' ? challengeUrl() : SITE;
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: shareText(), url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = file.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    b.textContent = 'Card saved';
+  }
 
-    // hamster
-    const speed = 310 * (1 + Math.min(.35, (level - 1) * .04)) * (1 - 0.025 * ham.held.length);
-    const dir = (keys.r ? 1 : 0) - (keys.l ? 1 : 0);
-    ham.x += dir * speed * dt;
-    if (dir) { ham.face = dir; ham.step += dt * 14; }
-    ham.x = Math.max(44, Math.min(W - 30, ham.x));
-    if (keys.j && ham.ground) { ham.vy = -580; ham.ground = false; ham.squash = .2; sfx.hop(); }
-    ham.vy += 1500 * dt; ham.y += ham.vy * dt;
-    if (ham.y >= GROUND) { if (!ham.ground) ham.squash = .15; ham.y = GROUND; ham.vy = 0; ham.ground = true; }
-    ham.inv = Math.max(0, ham.inv - dt); ham.squash = Math.max(0, ham.squash - dt);
-    if (ham.x < BURROW_X + 30) bank();
-
-    // items
-    const cx = ham.x, cy = ham.y - R;
-    for (let i = items.length - 1; i >= 0; i--) {
-      const it = items[i];
-      if (it.grace) it.grace = Math.max(0, it.grace - dt);
-      if (!it.landed) {
-        if (it.bouncy) it.vy += 900 * dt;
-        it.x += it.vx * dt; it.y += it.vy * dt; it.rot += it.spin * dt;
-        it.x = Math.max(BURROW_X + 50, Math.min(W - 20, it.x));
-      }
-      // pebbles get a forgiving hitbox, seeds a generous one
-      const reach = it.kind === 'pebble' ? R * .7 + it.r * .7 : R + 12;
-      const dx = it.x - cx, dy = it.y - cy;
-      if (!it.grace && dx * dx + dy * dy < reach * reach) {
-        if (it.kind === 'pebble') { items.splice(i, 1); hurt('Bonk'); if (state !== 'play') return; continue; }
-        if (ham.held.length < CAP) {
-          ham.held.push(it.kind); items.splice(i, 1);
-          if (it.kind === 'gold') sfx.gold(); else sfx.catch(ham.held.length);
-          if (ham.held.length === CAP) sfx.full();
-          if (it.kind === 'gold') float(it.x, it.y - 16, 'golden +20', '#fff1a8');
-          continue;
-        }
-      }
-      if (!it.landed && it.y >= GROUND - 6) {
-        if (it.kind === 'pebble') {
-          for (let k = 0; k < 6; k++) parts.push({ x: it.x, y: GROUND, vx: (Math.random() - .5) * 160, vy: -80 - Math.random() * 100, life: .5, c: '#9a8d80', s: 3 });
-          items.splice(i, 1); continue;
-        }
-        // seeds rest on the grass for a few seconds instead of vanishing
-        it.landed = true; it.y = GROUND - 6; it.rot = Math.PI / 2 + (Math.random() - .5) * .6; it.ttl = 4;
-      }
-      if (it.landed) { it.ttl -= dt; if (it.ttl <= 0) items.splice(i, 1); }
+  // ---------- simulation tick and its effects ----------
+  function tickOnce() {
+    const bits = bitsNow();
+    if (bits !== lastBits) { rec.push(game.s.tick + 1, bits); lastBits = bits; }
+    if (mode === 'classic') game.s.mult = live.ok && live.running ? 2 : 1;
+    game.step(bits);
+    if (ghost && !ghost.g.s.over) {
+      const inp = ghost.data.inputs;
+      while (ghost.k < inp.length && inp[ghost.k] <= ghost.g.s.tick + 1) { ghost.bits = inp[ghost.k + 1]; ghost.k += 2; }
+      ghost.g.step(ghost.bits); ghost.g.s.ev.length = 0;
     }
-
-    // paw
-    if (paw) {
-      if (paw.warn > 0) { paw.warn -= dt; if (paw.warn <= 0) paw.x = paw.side < 0 ? -80 : W + 80; }
-      else {
-        paw.x += -paw.side * paw.speed * dt;
-        if (Math.abs(paw.x - ham.x) < 32 && ham.y > GROUND - 40) hurt('Swiped');
-        if (state !== 'play') return;
-        if (paw.x < -160 || paw.x > W + 160) paw = null;
+    effects();
+  }
+  const POWER_NAME = { helmet: 'Helmet', magnet: 'Magnet', stretch: 'Big cheeks' };
+  const POWER_TIP = { helmet: 'Blocks the next hit', magnet: 'Pulls seeds in for 8 s', stretch: 'Hold 16 seeds for 15 s' };
+  function effects() {
+    const s = game.s;
+    for (const e of s.ev) {
+      if (e.type === 'catch') { if (e.kind === 'gold') { sfx.gold(); float(e.x, e.y - 16, 'golden +20', '#fff1a8'); } else sfx.catch(e.n); }
+      else if (e.type === 'full') sfx.full();
+      else if (e.type === 'bank') {
+        sfx.bank(e.n);
+        if (firstBankAt < 0) firstBankAt = s.t;
+        float(BURROW_X + 30, GROUND - 120, `+${e.pts}`, '#f2c14e', 34);
+        const el = $('hudScore'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+        for (let i = 0; i < 16; i++) parts.push({ x: BURROW_X, y: GROUND - 6, vx: (Math.random() - .5) * 180, vy: -140 - Math.random() * 160, life: .8, c: '#f2c14e', s: 3 });
       }
+      else if (e.type === 'hop') sfx.hop();
+      else if (e.type === 'hit') { sfx.hit(); float(e.x, e.y - 72, e.spill ? `${e.why}! dropped ${e.spill}` : `${e.why}!`, '#ec6a4f'); }
+      else if (e.type === 'shield') { sfx.shield(); float(e.x, e.y - 72, 'Helmet saved you!', '#82cfe0'); }
+      else if (e.type === 'power') { sfx.power(); float(e.x, e.y - 20, POWER_NAME[e.sub] + '!', '#82cfe0', 26); toast(`${POWER_NAME[e.sub]}: ${POWER_TIP[e.sub]}`, '#82cfe0'); }
+      else if (e.type === 'level') { banner = { title: `Level ${e.level}`, sub: LEVEL_NEWS[e.level] || 'Faster still', life: 2.8 }; sfx.level(); }
+      else if (e.type === 'warn') sfx.warn();
+      else if (e.type === 'owl') sfx.owl();
+      else if (e.type === 'wind') sfx.wind();
+      else if (e.type === 'land') for (let k = 0; k < 6; k++) parts.push({ x: e.x, y: GROUND, vx: (Math.random() - .5) * 160, vy: -80 - Math.random() * 100, life: .5, c: '#9a8d80', s: 3 });
     }
-
+    s.ev.length = 0;
     pickHint();
+    if (s.over) endRun();
   }
-
   // contextual coaching instead of a rules page
   function pickHint() {
-    const n = ham.held.length;
-    if (paw && paw.warn > 0) hint = { msg: 'Cat paw! Press Space to hop over it', c: '#ec6a4f' };
-    else if (n >= CAP) hint = { msg: 'Cheeks full! Run left to the burrow ←', c: '#f2c14e' };
-    else if (!tutored && banks === 0 && n === 0) hint = { msg: 'Stand under the falling seeds to catch them', c: '#f6ead7' };
-    else if (!tutored && banks === 0 && n >= 4) hint = { msg: `Run left into the burrow to bank ${n} seeds ←`, c: '#f6ead7' };
-    else if (!tutored && banks > 0 && t - firstBankAt < 5) hint = { msg: 'Nice! Carry more per trip for a much bigger payout', c: '#f6ead7' };
+    const s = game.s, n = s.ham.held.length;
+    if (s.paw && s.paw.warn > 0) hint = { msg: 'Cat paw! Press Space to hop over it', c: '#ec6a4f' };
+    else if (s.owl && s.owl.warn > 0) hint = { msg: 'The owl is diving at the red ring: move away!', c: '#ec6a4f' };
+    else if (n >= game.cap()) hint = { msg: 'Cheeks full! Run left to the burrow ←', c: '#f2c14e' };
+    else if (!tutored && s.banks === 0 && n === 0) hint = { msg: 'Stand under the falling seeds to catch them', c: '#f6ead7' };
+    else if (!tutored && s.banks === 0 && n >= 4) hint = { msg: `Run left into the burrow to bank ${n} seeds ←`, c: '#f6ead7' };
+    else if (!tutored && s.banks > 0 && s.t - firstBankAt < 5) hint = { msg: 'Nice! Carry more per trip for a much bigger payout', c: '#f6ead7' };
     else hint = null;
   }
-
   function tickFx(dt) {
     for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) parts.splice(i, 1); }
     for (let i = texts.length - 1; i >= 0; i--) { const f = texts[i]; f.y -= 40 * dt; f.life -= dt; if (f.life <= 0) texts.splice(i, 1); }
@@ -1125,7 +1292,9 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   // ---------- draw ----------
   const speck = Array.from({ length: 90 }, () => ({ x: Math.random() * W, y: GROUND + 12 + Math.random() * (H - GROUND - 12), r: 1 + Math.random() * 2.5 }));
   const stars = Array.from({ length: 50 }, () => ({ x: Math.random() * W, y: 60 + Math.random() * 230, r: Math.random() * 1.4 + .3, p: Math.random() * 6 }));
-  const day = () => live.ok && live.running;
+  const day = () => mode === 'classic' && live.ok && live.running;
+  const lerp = (a, b, k) => a + (b - a) * k;
+  let alpha = 1;
 
   function pillText(x, y, msg, fg, bg, font = '600 13px "JetBrains Mono", monospace', align = 'left') {
     ctx.font = font;
@@ -1136,21 +1305,22 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     ctx.fill();
     ctx.fillStyle = fg; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(msg, x0 + 10, y + 1);
+    return w;
   }
 
   function drawWorld() {
+    const s = game.s;
     const g = ctx.createLinearGradient(0, 0, 0, GROUND);
     if (day()) { g.addColorStop(0, '#5fb8d3'); g.addColorStop(1, '#cfe8c9'); }
     else { g.addColorStop(0, '#0e1626'); g.addColorStop(1, '#2b3550'); }
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, GROUND);
     if (!day()) {
       const now = performance.now() / 1000;
-      for (const s of stars) { ctx.globalAlpha = .4 + .4 * Math.sin(now + s.p); ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill(); }
+      for (const st of stars) { ctx.globalAlpha = .4 + .4 * Math.sin(now + st.p); ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.arc(st.x, st.y, st.r, 0, 7); ctx.fill(); }
       ctx.globalAlpha = 1;
     }
-    // sunflowers on stalks: the seed source
     FLOWERS.forEach((x, i) => {
-      const wob = wobble[i] > 0 && !reduceMotion ? Math.sin(performance.now() / 30) * 4 : 0;
+      const wob = s.wobble[i] > 0 && !reduceMotion ? Math.sin(performance.now() / 30) * 4 : 0;
       ctx.fillStyle = day() ? '#4f8a3a' : '#2c4a32'; ctx.fillRect(x - 3, -10, 6, 20);
       ctx.save(); ctx.translate(x + wob, 30);
       ctx.fillStyle = day() ? '#f2c14e' : '#c99b3c';
@@ -1160,21 +1330,35 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       for (let k = 0; k < 12; k++) { ctx.beginPath(); ctx.arc(Math.cos(k * 2.4) * k * 1.4, Math.sin(k * 2.4) * k * 1.4, 1.6, 0, 7); ctx.fill(); }
       ctx.restore();
     });
-    // grass + soil
     ctx.fillStyle = day() ? '#6aa84f' : '#3d6544'; ctx.fillRect(0, GROUND - 2, W, 10);
     ctx.fillStyle = '#4a3627'; ctx.fillRect(0, GROUND + 8, W, H - GROUND);
-    ctx.fillStyle = '#33251b'; for (const s of speck) { ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#33251b'; for (const sp of speck) { ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r, 0, 7); ctx.fill(); }
+    for (const p of s.puddles) {
+      ctx.globalAlpha = Math.min(1, p.life);
+      ctx.fillStyle = 'rgba(130,207,224,.55)'; ctx.beginPath(); ctx.ellipse(p.x, GROUND + 4, p.w / 2, 7, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(246,234,215,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p.x - 8, GROUND + 3, p.w / 5, 3, 0, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
     drawBurrow();
     drawWheel(740, 344, 46);
-    // real hamster status, always on screen
-    const st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
+    let st;
+    if (mode === 'daily') st = ['Daily Burrow · same run for everyone · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
+    else st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
       : live.running ? ['Real hamster RUNNING · banks ×2', '#1d2a12', 'rgba(159,209,111,.95)']
       : [`Real hamster asleep${usual ? ` · usually wakes ${fmtHour(usual.start)}` : ''} · banks ×1`, '#f6ead7', 'rgba(20,13,9,.7)'];
     pillText(12, 78, st[0], st[1], st[2]);
+    // active power-ups
+    const h = s.ham;
+    let px = 12;
+    if (state === 'play' || state === 'paused') {
+      if (h.helmet) px += pillText(px, 108, 'HELMET', '#0e1626', 'rgba(130,207,224,.95)', '600 12px "JetBrains Mono", monospace') + 6;
+      if (h.magnet > 0) px += pillText(px, 108, `MAGNET ${Math.ceil(h.magnet)}s`, '#0e1626', 'rgba(130,207,224,.95)', '600 12px "JetBrains Mono", monospace') + 6;
+      if (h.stretch > 0) pillText(px, 108, `BIG CHEEKS ${Math.ceil(h.stretch)}s`, '#0e1626', 'rgba(130,207,224,.95)', '600 12px "JetBrains Mono", monospace');
+    }
   }
 
   function drawBurrow() {
-    const n = ham.held.length;
+    const n = game.s.ham.held.length;
     const active = n > 0 && state === 'play';
     if (active) {
       const glow = ctx.createRadialGradient(BURROW_X, GROUND, 4, BURROW_X, GROUND, 80);
@@ -1189,24 +1373,23 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     ctx.fillStyle = active ? '#3b2410' : '#f6ead7';
     ctx.font = '13px "Lilita One", sans-serif'; ctx.fillText('BURROW', BURROW_X, GROUND - 100);
     ctx.font = '600 15px "JetBrains Mono", monospace';
-    ctx.fillText(active ? `bank +${bankValue(ham.held)}` : 'bank here', BURROW_X, GROUND - 82);
+    ctx.fillText(active ? `bank +${game.bankValue()}` : 'bank here', BURROW_X, GROUND - 82);
   }
 
   function drawWheel(x, y, r) {
-    const run = day();
+    const run = live.ok && live.running;
     ctx.save(); ctx.translate(x, y);
     ctx.strokeStyle = '#6b5440'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-14, r + 26); ctx.lineTo(0, 0); ctx.lineTo(14, r + 26); ctx.stroke();
     ctx.rotate(wheelAngle);
-    ctx.strokeStyle = run ? '#2d6f80' : '#7f9aa4'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke();
+    ctx.strokeStyle = day() ? '#2d6f80' : '#7f9aa4'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke();
     ctx.lineWidth = 1.5;
     for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); ctx.lineTo(Math.cos(a) * (r - 8), Math.sin(a) * (r - 8)); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
     ctx.restore();
     drawSqueektoshi(x, y + r - 3, run);
-    ctx.fillStyle = run ? '#1d3a42' : '#b7c7cd'; ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = day() ? '#1d3a42' : '#b7c7cd'; ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(!live.ok ? 'OFFLINE' : run ? `${live.rpm.toFixed(1)} RPM` : 'ASLEEP', x, y - r - 12);
   }
-
   // the real hamster inside the wheel: running when the feed says so, curled up asleep otherwise
   function drawSqueektoshi(x, y, run) {
     const now = performance.now() / 1000;
@@ -1220,53 +1403,50 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(10, -40, 7, 0, 7); ctx.fill();
       ctx.fillStyle = '#1b120c'; ctx.beginPath(); ctx.arc(19, -30, 3.4, 0, 7); ctx.fill();
       ctx.fillStyle = '#e46f7a'; ctx.beginPath(); ctx.arc(28, -25, 3, 0, 7); ctx.fill();
-    } else {
-      const breathe = reduceMotion ? 0 : Math.sin(now * 2) * 1.5;
-      ctx.fillStyle = '#e39a5d'; ctx.beginPath(); ctx.ellipse(0, -16, 27 + breathe, 17 + breathe, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(14, -30, 6, 0, 7); ctx.fill();
-      ctx.strokeStyle = '#1b120c'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.arc(16, -18, 4, .2, Math.PI - .2); ctx.stroke();
       ctx.restore();
-      // drifting z's
-      ctx.fillStyle = '#b7c7cd'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      for (let k = 0; k < 3; k++) {
-        const ph = reduceMotion ? k / 3 : (now * .5 + k / 3) % 1;
-        ctx.globalAlpha = 1 - ph;
-        ctx.font = `600 ${9 + ph * 6}px "JetBrains Mono", monospace`;
-        ctx.fillText('z', x + 12 + ph * 16, y - 20 - ph * 24);
-      }
-      ctx.globalAlpha = 1;
       return;
     }
+    const breathe = reduceMotion ? 0 : Math.sin(now * 2) * 1.5;
+    ctx.fillStyle = '#e39a5d'; ctx.beginPath(); ctx.ellipse(0, -16, 27 + breathe, 17 + breathe, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(14, -30, 6, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#1b120c'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(16, -18, 4, .2, Math.PI - .2); ctx.stroke();
     ctx.restore();
+    ctx.fillStyle = '#b7c7cd'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let k = 0; k < 3; k++) {
+      const ph = reduceMotion ? k / 3 : (now * .5 + k / 3) % 1;
+      ctx.globalAlpha = 1 - ph;
+      ctx.font = `600 ${9 + ph * 6}px "JetBrains Mono", monospace`;
+      ctx.fillText('z', x + 12 + ph * 16, y - 20 - ph * 24);
+    }
+    ctx.globalAlpha = 1;
   }
 
   function drawShadow(it) {
-    // landing marker: shows where things will hit the ground
     if (it.landed) return;
-    const k = Math.max(0, Math.min(1, it.y / GROUND));
+    const x = lerp(it.px, it.x, alpha), y = lerp(it.py, it.y, alpha);
+    const k = Math.max(0, Math.min(1, y / GROUND));
     if (it.kind === 'pebble') {
       const pulse = reduceMotion ? 1 : .75 + .25 * Math.sin(performance.now() / 60);
       ctx.fillStyle = `rgba(236,60,40,${(.2 + .4 * k) * pulse})`;
-      ctx.beginPath(); ctx.ellipse(it.x, GROUND + 2, 12 + 14 * k, 4 + 3 * k, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x, GROUND + 2, 12 + 14 * k, 4 + 3 * k, 0, 0, 7); ctx.fill();
       ctx.strokeStyle = `rgba(255,90,54,${.4 + .6 * k})`; ctx.lineWidth = 2; ctx.stroke();
-      if (k > .45) { ctx.fillStyle = '#ff5a36'; ctx.font = '18px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', it.x, GROUND - 14); }
+      if (k > .45) { ctx.fillStyle = '#ff5a36'; ctx.font = '18px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('!', x, GROUND - 14); }
       return;
     }
     ctx.fillStyle = `rgba(0,0,0,${.1 + .25 * k})`;
-    ctx.beginPath(); ctx.ellipse(it.x, GROUND + 2, 8 + 10 * k, 3 + 2 * k, 0, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, GROUND + 2, 8 + 10 * k, 3 + 2 * k, 0, 0, 7); ctx.fill();
   }
-
   // angry red-hot pebble: spiky charcoal body, glowing cracks, fire trail, upright scowl
-  function drawPebble(it) {
+  function drawPebble(it, x, y) {
     const r = it.r;
     const trail = Math.min(70, it.vy * .16);
-    const g = ctx.createLinearGradient(it.x, it.y - r - trail, it.x, it.y);
+    const g = ctx.createLinearGradient(x, y - r - trail, x, y);
     g.addColorStop(0, 'rgba(255,120,40,0)'); g.addColorStop(1, 'rgba(255,90,40,.75)');
     ctx.strokeStyle = g; ctx.lineCap = 'round'; ctx.lineWidth = r * 1.3;
-    ctx.beginPath(); ctx.moveTo(it.x, it.y - r - trail); ctx.lineTo(it.x, it.y - 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - r - trail); ctx.lineTo(x, y - 2); ctx.stroke();
     ctx.lineCap = 'butt';
-    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(it.rot);
     ctx.shadowColor = '#ff3b1f'; ctx.shadowBlur = 16;
     ctx.fillStyle = '#26201d';
     ctx.beginPath();
@@ -1281,101 +1461,148 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     ctx.beginPath(); ctx.moveTo(-r * .6, r * .35); ctx.lineTo(-r * .1, r * .1); ctx.lineTo(r * .2, r * .55); ctx.moveTo(r * .5, -r * .2); ctx.lineTo(r * .15, -r * .55); ctx.stroke();
     ctx.restore();
     ctx.fillStyle = '#ffd23f';
-    ctx.beginPath(); ctx.arc(it.x - 5, it.y - 1, 2.6, 0, 7); ctx.arc(it.x + 5, it.y - 1, 2.6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x - 5, y - 1, 2.6, 0, 7); ctx.arc(x + 5, y - 1, 2.6, 0, 7); ctx.fill();
     ctx.strokeStyle = '#ff5a36'; ctx.lineWidth = 2.2;
-    ctx.beginPath(); ctx.moveTo(it.x - 10, it.y - 8); ctx.lineTo(it.x - 2, it.y - 4); ctx.moveTo(it.x + 10, it.y - 8); ctx.lineTo(it.x + 2, it.y - 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 10, y - 8); ctx.lineTo(x - 2, y - 4); ctx.moveTo(x + 10, y - 8); ctx.lineTo(x + 2, y - 4); ctx.stroke();
   }
-
-  function drawItem(it) {
-    if (it.landed && it.ttl < 1.2 && Math.floor(it.ttl * 8) % 2 === 0) return;
-    ctx.save(); ctx.translate(it.x, it.y); ctx.rotate(it.rot);
-    if (it.kind === 'pebble') {
-      ctx.restore();
-      drawPebble(it);
-      return;
+  // power-ups float down in a bubble so they read as "good" and different from seeds
+  function drawPower(it, x, y) {
+    const bob = reduceMotion ? 0 : Math.sin(performance.now() / 200) * 2;
+    ctx.save(); ctx.translate(x, y + bob);
+    ctx.shadowColor = '#82cfe0'; ctx.shadowBlur = 14;
+    ctx.fillStyle = 'rgba(130,207,224,.25)'; ctx.strokeStyle = '#82cfe0'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, 17, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    if (it.sub === 'helmet') {
+      ctx.fillStyle = '#5b8fd8'; ctx.beginPath(); ctx.arc(0, 4, 10, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#f6ead7'; ctx.fillRect(-11, 3, 22, 3);
+    } else if (it.sub === 'magnet') {
+      ctx.strokeStyle = '#ec6a4f'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -1, 7, Math.PI, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-7, -1); ctx.lineTo(-7, 7); ctx.moveTo(7, -1); ctx.lineTo(7, 7); ctx.stroke();
+      ctx.fillStyle = '#f6ead7'; ctx.fillRect(-9.5, 5, 5, 4); ctx.fillRect(4.5, 5, 5, 4);
     } else {
-      const gold = it.kind === 'gold';
-      ctx.shadowColor = gold ? '#fff1a8' : 'rgba(255,225,120,.9)'; ctx.shadowBlur = gold ? 18 : 12;
-      ctx.fillStyle = gold ? '#ffe066' : '#3b2f2a';
-      ctx.beginPath(); ctx.moveTo(0, -13); ctx.quadraticCurveTo(10, -2, 0, 13); ctx.quadraticCurveTo(-10, -2, 0, -13); ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = gold ? '#b8860b' : '#f6ead7'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(-3, -7); ctx.lineTo(-3, 8); ctx.moveTo(3, -7); ctx.lineTo(3, 8); ctx.stroke();
+      ctx.fillStyle = '#f3c08f'; ctx.beginPath(); ctx.arc(0, 1, 10, 0, 7); ctx.fill();
+      ctx.fillStyle = '#3b2410'; ctx.font = '13px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('16', 0, 2);
     }
     ctx.restore();
   }
+  function drawItem(it) {
+    if (it.landed && it.ttl < 1.2 && Math.floor(it.ttl * 8) % 2 === 0) return;
+    const x = lerp(it.px, it.x, alpha), y = lerp(it.py, it.y, alpha);
+    if (it.kind === 'pebble') return drawPebble(it, x, y);
+    if (it.kind === 'power') return drawPower(it, x, y);
+    const gold = it.kind === 'gold';
+    ctx.save(); ctx.translate(x, y); ctx.rotate(it.rot);
+    ctx.shadowColor = gold ? '#fff1a8' : 'rgba(255,225,120,.9)'; ctx.shadowBlur = gold ? 18 : 12;
+    ctx.fillStyle = gold ? '#ffe066' : '#3b2f2a';
+    ctx.beginPath(); ctx.moveTo(0, -13); ctx.quadraticCurveTo(10, -2, 0, 13); ctx.quadraticCurveTo(-10, -2, 0, -13); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = gold ? '#b8860b' : '#f6ead7'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-3, -7); ctx.lineTo(-3, 8); ctx.moveTo(3, -7); ctx.lineTo(3, 8); ctx.stroke();
+    ctx.restore();
+  }
 
-  function drawHamster() {
-    const h = ham;
-    const blink = h.inv > 0 && Math.floor(h.inv * 12) % 2 === 0;
-    const fill = h.held.length / CAP;
+  // the hamster, in its own (facing) space; used for the player, the ghost, the wardrobe preview and share cards
+  function drawHamsterShape(c, h, eq) {
+    const [furC, earC] = FUR[eq.fur] || FUR.classic;
+    c.fillStyle = '#f0a7a0';
+    c.beginPath(); c.ellipse(-10 + Math.sin(h.step) * 3, -2, 6, 3, 0, 0, 7); c.fill();
+    c.beginPath(); c.ellipse(10 - Math.sin(h.step) * 3, -2, 6, 3, 0, 0, 7); c.fill();
+    c.fillStyle = furC; c.beginPath(); c.ellipse(0, -R, 28, 22, 0, 0, 7); c.fill();
+    c.fillStyle = '#f6ead7'; c.beginPath(); c.ellipse(6, -14, 18, 12, 0, 0, 7); c.fill();
+    c.fillStyle = earC; c.beginPath(); c.arc(8, -42, 7, 0, 7); c.fill(); c.beginPath(); c.arc(-6, -42, 6, 0, 7); c.fill();
+    c.fillStyle = '#f0a7a0'; c.beginPath(); c.arc(8, -42, 3.5, 0, 7); c.fill();
+    const k = Math.min(1, h.held / SIM.CAP);
+    c.fillStyle = k > 0 ? '#f3c08f' : furC;
+    c.beginPath(); c.arc(20, -20, 6 + k * 14, 0, 7); c.fill();
+    if (h.gold) { c.strokeStyle = '#ffe066'; c.lineWidth = 2; c.stroke(); }
+    c.fillStyle = '#1b120c'; c.beginPath(); c.arc(18, -32, 3.2, 0, 7); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(19, -33, 1, 0, 7); c.fill();
+    c.fillStyle = '#e46f7a'; c.beginPath(); c.arc(28, -26, 2.6, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(27,18,12,.5)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(26, -24); c.lineTo(38, -27); c.moveTo(26, -23); c.lineTo(38, -21); c.stroke();
+    drawOutfit(c, eq);
+  }
+  function drawOutfit(c, eq) {
+    if (eq.extra === 'scarf') { c.fillStyle = '#ec6a4f'; c.beginPath(); c.ellipse(10, -9, 17, 5, 0, 0, 7); c.fill(); c.fillRect(-6, -9, 7, 15); }
+    if (eq.extra === 'bowtie') {
+      c.fillStyle = '#b04a8f';
+      c.beginPath(); c.moveTo(12, -8); c.lineTo(4, -13); c.lineTo(4, -3); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(12, -8); c.lineTo(20, -13); c.lineTo(20, -3); c.closePath(); c.fill();
+      c.beginPath(); c.arc(12, -8, 2.5, 0, 7); c.fill();
+    }
+    if (eq.extra === 'shades') {
+      c.fillStyle = '#14100d';
+      c.beginPath(); if (c.roundRect) c.roundRect(11, -37, 15, 8, 3); else c.rect(11, -37, 15, 8); c.fill();
+      c.fillRect(3, -35, 9, 2);
+      c.fillStyle = 'rgba(130,207,224,.6)'; c.fillRect(14, -36, 4, 2);
+    }
+    if (eq.hat === 'crown') {
+      c.fillStyle = '#ffd23f'; c.strokeStyle = '#b8860b'; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(-6, -46); c.lineTo(-6, -58); c.lineTo(0, -52); c.lineTo(5, -63); c.lineTo(10, -52); c.lineTo(16, -58); c.lineTo(16, -46); c.closePath(); c.fill(); c.stroke();
+    } else if (eq.hat === 'party') {
+      c.fillStyle = '#82cfe0'; c.beginPath(); c.moveTo(-4, -46); c.lineTo(16, -46); c.lineTo(5, -74); c.closePath(); c.fill();
+      c.strokeStyle = '#ec6a4f'; c.lineWidth = 2.5; c.beginPath(); c.moveTo(0, -53); c.lineTo(12, -55); c.moveTo(3, -62); c.lineTo(10, -63); c.stroke();
+      c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(5, -75, 3.5, 0, 7); c.fill();
+    } else if (eq.hat === 'flower') {
+      c.fillStyle = '#f2c14e';
+      for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; c.beginPath(); c.ellipse(2 + Math.cos(a) * 7, -52 + Math.sin(a) * 7, 4.5, 2.5, a, 0, 7); c.fill(); }
+      c.fillStyle = '#5b3a1c'; c.beginPath(); c.arc(2, -52, 4.5, 0, 7); c.fill();
+    } else if (eq.hat === 'beanie') {
+      c.fillStyle = '#4f8a3a'; c.beginPath(); c.ellipse(2, -44, 19, 13, 0, Math.PI, 0); c.fill();
+      c.fillStyle = '#3d6544'; c.fillRect(-17, -47, 38, 5);
+      c.fillStyle = '#f6ead7'; c.beginPath(); c.arc(2, -58, 4, 0, 7); c.fill();
+    } else if (eq.hat === 'tophat') {
+      c.fillStyle = '#1b120c'; c.fillRect(-7, -72, 22, 24); c.fillRect(-13, -50, 34, 5);
+      c.fillStyle = '#ec6a4f'; c.fillRect(-7, -54, 22, 4);
+    }
+  }
+  function drawHamster(s, eq, ghostMode) {
+    const h = s.ham;
+    const x = ghostMode ? h.x : lerp(h.px, h.x, alpha), y = ghostMode ? h.y : lerp(h.py, h.y, alpha);
+    const blink = !ghostMode && h.inv > 0 && Math.floor(h.inv * 12) % 2 === 0;
     const sq = h.squash > 0 ? 1 + h.squash : 1;
-    const bob = h.ground && (keys.l || keys.r) ? Math.sin(h.step) * 2 : 0;
-    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(h.x, GROUND + 2, 26, 5, 0, 0, 7); ctx.fill();
+    const moving = ghostMode ? false : (keys.l || keys.r);
+    const bob = h.ground && moving ? Math.sin(h.step) * 2 : 0;
+    if (!ghostMode) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, GROUND + 2, 26, 5, 0, 0, 7); ctx.fill(); }
+    if (h.magnet > 0 && !ghostMode) {
+      ctx.strokeStyle = 'rgba(236,106,79,.35)'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.arc(x, y - R, 170, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    }
     if (!blink) {
-      ctx.save(); ctx.translate(h.x, h.y + bob); ctx.scale(h.face * sq, 1 / sq);
-      ctx.fillStyle = '#f0a7a0';
-      ctx.beginPath(); ctx.ellipse(-10 + Math.sin(h.step) * 3, -2, 6, 3, 0, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(10 - Math.sin(h.step) * 3, -2, 6, 3, 0, 0, 7); ctx.fill();
-      const furC = perks.gold ? '#f2c14e' : '#e39a5d';
-      ctx.fillStyle = furC; ctx.beginPath(); ctx.ellipse(0, -R, 28, 22, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.ellipse(6, -14, 18, 12, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(8, -42, 7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(-6, -42, 6, 0, 7); ctx.fill();
-      ctx.fillStyle = '#f0a7a0'; ctx.beginPath(); ctx.arc(8, -42, 3.5, 0, 7); ctx.fill();
-      const cr = 6 + fill * 14;
-      ctx.fillStyle = fill > 0 ? '#f3c08f' : furC;
-      ctx.beginPath(); ctx.arc(20, -20, cr, 0, 7); ctx.fill();
-      if (h.held.includes('gold')) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 2; ctx.stroke(); }
-      ctx.fillStyle = '#1b120c'; ctx.beginPath(); ctx.arc(18, -32, 3.2, 0, 7); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(19, -33, 1, 0, 7); ctx.fill();
-      ctx.fillStyle = '#e46f7a'; ctx.beginPath(); ctx.arc(28, -26, 2.6, 0, 7); ctx.fill();
-      ctx.strokeStyle = 'rgba(27,18,12,.5)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(26, -24); ctx.lineTo(38, -27); ctx.moveTo(26, -23); ctx.lineTo(38, -21); ctx.stroke();
-      drawPerks();
+      ctx.save(); ctx.translate(x, y + bob); ctx.scale(h.face * sq, 1 / sq);
+      if (ghostMode) ctx.globalAlpha = .35;
+      drawHamsterShape(ctx, { held: h.held.length, step: h.step, face: h.face, gold: h.held.includes('gold') }, eq);
+      if (h.helmet && !ghostMode) {
+        ctx.fillStyle = 'rgba(91,143,216,.9)'; ctx.beginPath(); ctx.ellipse(2, -42, 20, 11, 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = '#f6ead7'; ctx.fillRect(-18, -43, 40, 3);
+      }
       ctx.restore();
+      ctx.globalAlpha = 1;
     }
-    // cheek counter rides above the hamster
+    if (ghostMode) {
+      pillText(x, y - 74, `${ghost.data.nick || ghost.data.address} ${s.score}`, '#f6ead7', 'rgba(130,207,224,.35)', '600 11px "JetBrains Mono", monospace', 'center');
+      return;
+    }
     if (state === 'play' || state === 'paused') {
-      const n = h.held.length, full = n >= CAP;
-      pillText(h.x, h.y - 80, `${n}/${CAP}`, full ? '#3b2410' : '#f6ead7', full ? '#f2c14e' : 'rgba(20,13,9,.75)', '600 13px "JetBrains Mono", monospace', 'center');
+      const n = h.held.length, capN = game.cap(), full = n >= capN;
+      pillText(x, y - 80, `${n}/${capN}`, full ? '#3b2410' : '#f6ead7', full ? '#f2c14e' : 'rgba(20,13,9,.75)', '600 13px "JetBrains Mono", monospace', 'center');
     }
   }
 
-  // cosmetic Squeek perks, drawn in the hamster's local (facing) space
-  function drawPerks() {
-    if (perks.scarf) {
-      ctx.fillStyle = '#ec6a4f';
-      ctx.beginPath(); ctx.ellipse(10, -9, 17, 5, 0, 0, 7); ctx.fill();
-      ctx.fillRect(-6, -9, 7, 15);
-    }
-    if (perks.shades) {
-      ctx.fillStyle = '#14100d';
-      ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(11, -37, 15, 8, 3); else ctx.rect(11, -37, 15, 8); ctx.fill();
-      ctx.fillRect(3, -35, 9, 2);
-      ctx.fillStyle = 'rgba(130,207,224,.6)'; ctx.fillRect(14, -36, 4, 2);
-    }
-    if (perks.crown) {
-      ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(-6, -46); ctx.lineTo(-6, -58); ctx.lineTo(0, -52); ctx.lineTo(5, -63); ctx.lineTo(10, -52); ctx.lineTo(16, -58); ctx.lineTo(16, -46);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
-  }
-
-  function drawPaw() {
-    if (!paw) return;
-    if (paw.warn > 0) {
-      const x = paw.side < 0 ? 0 : W - 52;
+  function drawPaw(p) {
+    if (!p) return;
+    if (p.warn > 0) {
+      const x = p.side < 0 ? 0 : W - 52;
       ctx.globalAlpha = .35 + .35 * Math.sin(performance.now() / 70);
       ctx.fillStyle = '#ec6a4f'; ctx.fillRect(x, GROUND - 56, 52, 56);
       ctx.globalAlpha = 1;
-      // paw peeking in from the edge
-      ctx.fillStyle = '#7d7f88'; ctx.beginPath(); ctx.ellipse(paw.side < 0 ? 4 : W - 4, GROUND - 18, 18, 16, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#7d7f88'; ctx.beginPath(); ctx.ellipse(p.side < 0 ? 4 : W - 4, GROUND - 18, 18, 16, 0, 0, 7); ctx.fill();
       ctx.fillStyle = '#f6ead7'; ctx.font = '26px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('!', x + 26, GROUND - 74);
       return;
     }
-    ctx.save(); ctx.translate(paw.x, GROUND - 18); ctx.scale(-paw.side, 1);
+    ctx.save(); ctx.translate(p.x, GROUND - 18); ctx.scale(-p.side, 1);
     ctx.fillStyle = '#7d7f88'; ctx.fillRect(10, -16, 160, 32);
     ctx.beginPath(); ctx.ellipse(0, 0, 26, 20, 0, 0, 7); ctx.fill();
     ctx.fillStyle = '#f0a7a0';
@@ -1383,14 +1610,52 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.arc(-16, k * 9, 4, 0, 7); ctx.fill(); }
     ctx.restore();
   }
+  function drawOwl(o) {
+    if (!o) return;
+    if (o.warn > 0) {
+      const pulse = reduceMotion ? 1 : .6 + .4 * Math.sin(performance.now() / 80);
+      ctx.strokeStyle = `rgba(236,90,60,${pulse})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(o.tx, GROUND + 2, 40, 9, 0, 0, 7); ctx.stroke();
+      pillText(o.side < 0 ? 60 : W - 60, 140, 'HOO!', '#f6ead7', 'rgba(236,90,60,.9)', '18px "Lilita One", sans-serif', 'center');
+      return;
+    }
+    const dir = o.side < 0 ? 1 : -1, flap = reduceMotion ? 0 : Math.sin(performance.now() / 50) * 8;
+    ctx.save(); ctx.translate(o.x, o.y); ctx.scale(dir, 1);
+    ctx.fillStyle = '#6b4a2b';
+    ctx.beginPath(); ctx.moveTo(-6, -4); ctx.lineTo(-40, -14 + flap); ctx.lineTo(-10, 8); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(6, -4); ctx.lineTo(36, -18 + flap); ctx.lineTo(10, 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8a6239'; ctx.beginPath(); ctx.ellipse(0, 0, 16, 20, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.arc(-6, -6, 6, 0, 7); ctx.arc(6, -6, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(-6, -6, 3, 0, 7); ctx.arc(6, -6, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = '#1b120c'; ctx.beginPath(); ctx.arc(-6, -6, 1.4, 0, 7); ctx.arc(6, -6, 1.4, 0, 7); ctx.fill();
+    ctx.fillStyle = '#f2c14e'; ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(0, 6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function drawWind(w) {
+    if (!w) return;
+    const now = performance.now() / 1000;
+    if (w.warn > 0) {
+      pillText(W / 2, 150, w.dir > 0 ? 'WIND ⟶' : '⟵ WIND', '#0e1626', 'rgba(130,207,224,.9)', '18px "Lilita One", sans-serif', 'center');
+      return;
+    }
+    ctx.strokeStyle = 'rgba(246,234,215,.25)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 14; i++) {
+      const y = 70 + i * 24, off = reduceMotion ? 0 : ((now * 600 * w.dir + i * 137) % (W + 200) + W + 200) % (W + 200) - 100;
+      ctx.beginPath(); ctx.moveTo(off, y); ctx.lineTo(off + 60 * w.dir, y); ctx.stroke();
+    }
+  }
 
   function draw() {
+    const s = game.s;
     ctx.clearRect(0, 0, W, H);
     drawWorld();
-    for (const it of items) drawShadow(it);
-    for (const it of items) drawItem(it);
-    drawPaw();
-    drawHamster();
+    drawWind(s.wind);
+    for (const it of s.items) drawShadow(it);
+    for (const it of s.items) drawItem(it);
+    drawPaw(s.paw);
+    if (ghost && (state === 'play' || state === 'paused') && !ghost.g.s.over) drawHamster(ghost.g.s, { hat: 'none', fur: 'classic', extra: 'none' }, true);
+    drawHamster(s, equipNow(), false);
+    drawOwl(s.owl);
     for (const p of parts) { ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill(); }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1406,6 +1671,13 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       pillText(W / 2, 112 + i * 32, ts.msg, ts.color, 'rgba(20,13,9,.88)', '600 14px "JetBrains Mono", monospace', 'center');
     });
     ctx.globalAlpha = 1;
+    if (ghost && state === 'play') {
+      const gs = ghost.g.s;
+      const label = gs.over ? `Ghost finished: ${ghost.data.score}` : `Ghost ${gs.score} · you ${s.score}`;
+      ctx.font = '600 13px "JetBrains Mono", monospace';
+      const w = ctx.measureText(label).width + 20;
+      pillText(W - 12 - w, 78, label, s.score >= gs.score ? '#1d2a12' : '#f6ead7', s.score >= gs.score ? 'rgba(159,209,111,.95)' : 'rgba(130,207,224,.35)');
+    }
     if (banner && state === 'play') {
       ctx.globalAlpha = Math.min(1, banner.life * 1.5);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1421,29 +1693,39 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   // ---------- HUD ----------
   let hudCache = '';
   function hud() {
-    const key = `${hearts}|${Math.floor(t * 4)}|${score}|${level}`;
+    const s = game.s;
+    const key = `${s.hearts}|${Math.floor(s.t * 4)}|${s.score}|${s.level}`;
     if (key === hudCache) return;
     hudCache = key;
-    $('hudHearts').textContent = '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(3 - Math.max(0, hearts));
-    $('hudTime').style.width = ((t % LEVEL_SECS) / LEVEL_SECS * 100) + '%';
-    $('hudLevel').textContent = level;
-    $('hudScore').textContent = score;
+    $('hudHearts').textContent = '♥'.repeat(Math.max(0, s.hearts)) + '♡'.repeat(3 - Math.max(0, s.hearts));
+    $('hudTime').style.width = ((s.t % SIM.LEVEL_SECS) / SIM.LEVEL_SECS * 100) + '%';
+    $('hudLevel').textContent = s.level;
+    $('hudScore').textContent = s.score;
   }
 
-  // ---------- loop ----------
+  // ---------- loop: fixed 30 Hz simulation, drawn smoothly in between ----------
   let last = performance.now();
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (state === 'play') update(dt);
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (state === 'play') {
+      acc += dt;
+      while (acc >= DT && state === 'play') { tickOnce(); acc -= DT; }
+      alpha = Math.min(1, acc / DT);
+    } else alpha = 1;
     if (state !== 'paused') tickFx(dt);
     draw(); hud();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
+  // ---------- boot ----------
   poll();
   setInterval(poll, 8000);
   loadUsual();
   setInterval(loadUsual, 30 * 60 * 1000);
+  setInterval(() => { if (state === 'ready' || state === 'over') renderUsual(); }, 60000);
+  renderWardrobe();
+  if (window.claude && typeof window.claude.use === 'function') initClaudeBoard(window.claude);
+  else initWallet();
 })();
 </script>
