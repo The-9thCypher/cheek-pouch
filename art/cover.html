@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Cheek Pouch art</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@600;700&family=JetBrains+Mono:wght@600&display=swap">
+<style>html,body{margin:0;background:#241912;overflow:hidden}canvas{display:block}</style>
+</head><body>
+<canvas id="cv"></canvas>
+<script>
+// Renders the Cheek Pouch cover (?mode=cover, 1200x630) or icon (?mode=icon, 1024x1024).
+// Shapes match the in-game art so the image looks like the game.
+const mode = new URLSearchParams(location.search).get('mode') || 'cover';
+const W = mode === 'icon' ? 1024 : 1200, H = mode === 'icon' ? 1024 : 630;
+const cv = document.getElementById('cv');
+cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+
+// seeded random so every render is identical
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+function sky(groundY) {
+  const g = ctx.createLinearGradient(0, 0, 0, groundY);
+  g.addColorStop(0, '#0e1626'); g.addColorStop(1, '#2f3a58');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, groundY);
+  for (let i = 0; i < 90; i++) {
+    ctx.globalAlpha = .35 + rnd() * .55; ctx.fillStyle = '#f6ead7';
+    ctx.beginPath(); ctx.arc(rnd() * W, rnd() * groundY * .8, rnd() * 1.8 + .4, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function sunflower(x, y, s, wilt = 0) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(wilt);
+  ctx.fillStyle = '#3d6544'; ctx.fillRect(-4, -200, 8, 200);
+  ctx.fillStyle = '#e8b445';
+  for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; ctx.beginPath(); ctx.ellipse(Math.cos(a) * 30, Math.sin(a) * 30, 16, 7, a, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#5b3a1c'; ctx.beginPath(); ctx.arc(0, 0, 23, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.28)';
+  for (let k = 0; k < 16; k++) { ctx.beginPath(); ctx.arc(Math.cos(k * 2.4) * k * 1.3, Math.sin(k * 2.4) * k * 1.3, 1.8, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+
+function ground(y) {
+  ctx.fillStyle = '#3d6544'; ctx.fillRect(0, y - 3, W, 14);
+  ctx.fillStyle = '#4a3627'; ctx.fillRect(0, y + 10, W, H - y);
+  ctx.fillStyle = '#33251b';
+  for (let i = 0; i < 140; i++) { ctx.beginPath(); ctx.arc(rnd() * W, y + 18 + rnd() * (H - y - 18), 1.5 + rnd() * 3, 0, 7); ctx.fill(); }
+}
+
+function seedShape(x, y, s, rot, gold) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(s, s);
+  ctx.shadowColor = gold ? '#fff1a8' : 'rgba(255,225,120,.9)'; ctx.shadowBlur = gold ? 22 : 12;
+  ctx.fillStyle = gold ? '#ffe066' : '#3b2f2a';
+  ctx.beginPath(); ctx.moveTo(0, -13); ctx.quadraticCurveTo(10, -2, 0, 13); ctx.quadraticCurveTo(-10, -2, 0, -13); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = gold ? '#b8860b' : '#f6ead7'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(-3, -7); ctx.lineTo(-3, 8); ctx.moveTo(3, -7); ctx.lineTo(3, 8); ctx.stroke();
+  ctx.restore();
+}
+
+function pebble(x, y, s, rot) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  const r = 14, trail = 70;
+  const g = ctx.createLinearGradient(0, -r - trail, 0, 0);
+  g.addColorStop(0, 'rgba(255,120,40,0)'); g.addColorStop(1, 'rgba(255,90,40,.8)');
+  ctx.strokeStyle = g; ctx.lineCap = 'round'; ctx.lineWidth = r * 1.3;
+  ctx.beginPath(); ctx.moveTo(0, -r - trail); ctx.lineTo(0, -2); ctx.stroke();
+  ctx.save(); ctx.rotate(rot);
+  ctx.shadowColor = '#ff3b1f'; ctx.shadowBlur = 18; ctx.fillStyle = '#26201d';
+  ctx.beginPath();
+  for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2, rr = r * (k % 2 ? .78 : 1.22); k ? ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ff5a36'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = '#ff8a3d'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-r * .6, r * .35); ctx.lineTo(-r * .1, r * .1); ctx.lineTo(r * .2, r * .55); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(-5, -1, 2.6, 0, 7); ctx.arc(5, -1, 2.6, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#ff5a36'; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.moveTo(-10, -8); ctx.lineTo(-2, -4); ctx.moveTo(10, -8); ctx.lineTo(2, -4); ctx.stroke();
+  ctx.restore();
+}
+
+// the hamster, feet at (x, y), facing right, cheeks stuffed, wearing the holder crown
+function hamster(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(0, 2, 28, 5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f0a7a0';
+  ctx.beginPath(); ctx.ellipse(-11, -2, 6, 3, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(11, -2, 6, 3, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e39a5d'; ctx.beginPath(); ctx.ellipse(0, -22, 28, 22, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.ellipse(6, -14, 18, 12, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(8, -42, 7, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(-6, -42, 6, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f0a7a0'; ctx.beginPath(); ctx.arc(8, -42, 3.5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#f3c08f'; ctx.beginPath(); ctx.arc(20, -20, 19, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.beginPath(); ctx.ellipse(16, -28, 6, 4, -.5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#1b120c'; ctx.beginPath(); ctx.arc(16, -33, 3.2, 0, 7); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(17, -34, 1.1, 0, 7); ctx.fill();
+  ctx.fillStyle = '#e46f7a'; ctx.beginPath(); ctx.arc(30, -27, 2.8, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(27,18,12,.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(28, -25); ctx.lineTo(41, -28); ctx.moveTo(28, -24); ctx.lineTo(41, -21); ctx.stroke();
+  ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-6, -46); ctx.lineTo(-6, -58); ctx.lineTo(0, -52); ctx.lineTo(5, -63); ctx.lineTo(10, -52); ctx.lineTo(16, -58); ctx.lineTo(16, -46); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+function burrow(x, y, s, label) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 90);
+  glow.addColorStop(0, 'rgba(242,193,78,.45)'); glow.addColorStop(1, 'rgba(242,193,78,0)');
+  ctx.fillStyle = glow; ctx.fillRect(-90, -90, 180, 110);
+  ctx.fillStyle = '#140d09'; ctx.beginPath(); ctx.ellipse(0, 6, 44, 22, 0, Math.PI, 0); ctx.ellipse(0, 6, 44, 12, 0, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#7a5532'; ctx.fillRect(-3, -76, 6, 58);
+  ctx.fillStyle = '#f2c14e'; ctx.beginPath(); ctx.roundRect(-50, -114, 100, 44, 8); ctx.fill();
+  ctx.fillStyle = '#3b2410'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = '13px "Lilita One", sans-serif'; ctx.fillText('BURROW', 0, -102);
+  ctx.font = '600 15px "JetBrains Mono", monospace'; ctx.fillText(label, 0, -84);
+  ctx.restore();
+}
+
+function wheel(x, y, r) {
+  ctx.save(); ctx.translate(x, y);
+  ctx.strokeStyle = '#6b5440'; ctx.lineWidth = r * .16; ctx.beginPath(); ctx.moveTo(-r * .4, r * 1.6); ctx.lineTo(0, 0); ctx.lineTo(r * .4, r * 1.6); ctx.stroke();
+  ctx.rotate(.3);
+  ctx.strokeStyle = '#82cfe0'; ctx.lineWidth = r * .1; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke();
+  ctx.lineWidth = r * .04;
+  for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); ctx.lineTo(Math.cos(a) * r * .78, Math.sin(a) * r * .78); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+  ctx.restore();
+}
+
+function title(x, y, size, align = 'left') {
+  ctx.textAlign = align; ctx.textBaseline = 'alphabetic';
+  ctx.font = `${size}px "Lilita One", sans-serif`;
+  ctx.fillStyle = '#7a4a1c'; ctx.fillText('Cheek Pouch', x, y + size * .06);
+  ctx.fillStyle = '#f2c14e'; ctx.fillText('Cheek Pouch', x, y);
+}
+
+function pill(x, y, text, size) {
+  ctx.font = `600 ${size}px "JetBrains Mono", monospace`;
+  const w = ctx.measureText(text).width + size * 3.2, h = size * 2.2;
+  ctx.fillStyle = 'rgba(20,13,9,.75)'; ctx.strokeStyle = '#9fd16f'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(x, y - h / 2, w, h, h / 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#9fd16f'; ctx.beginPath(); ctx.arc(x + size * 1.1, y, size * .35, 0, 7); ctx.fill();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + size * 1.9, y + 1);
+}
+
+function cover() {
+  const GY = 540;
+  sky(GY);
+  ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.arc(1110, 92, 38, 0, 7); ctx.fill();
+  ctx.fillStyle = '#16203a'; ctx.beginPath(); ctx.arc(1126, 80, 35, 0, 7); ctx.fill();
+  [[800, 62, 1.2, -.05], [925, 30, 1.0, .04], [1040, 74, 1.15, .06]].forEach(f => sunflower(...f));
+  ground(GY);
+  // falling seeds and danger
+  [[790, 215, 1.5, .4], [1000, 250, 1.6, -.3], [735, 330, 1.4, .9], [1015, 380, 1.5, .2], [700, 455, 1.4, -.6]].forEach(s => seedShape(s[0], s[1], s[2], s[3], false));
+  seedShape(900, 175, 1.9, .25, true);
+  pebble(600, 400, 2.2, .4);
+  wheel(1105, 448, 52);
+  hamster(860, GY, 4.1);
+  burrow(120, GY, 1.6, 'bank +78');
+  // words
+  title(64, 168, 118);
+  ctx.font = '700 30px "Baloo 2", sans-serif'; ctx.fillStyle = '#f6ead7'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('An endless hamster arcade game', 68, 228);
+  ctx.fillText('run by a real hamster’s wheel.', 68, 266);
+  pill(68, 322, 'LIVE ON SQUEEKCHAIN', 17);
+}
+
+function icon() {
+  ctx.fillStyle = '#241912'; ctx.fillRect(0, 0, W, H);
+  // sunflower halo behind the hamster
+  ctx.save(); ctx.translate(W / 2, H * .47);
+  ctx.fillStyle = '#e8b445';
+  for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; ctx.beginPath(); ctx.ellipse(Math.cos(a) * 330, Math.sin(a) * 330, 130, 52, a, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#5b3a1c'; ctx.beginPath(); ctx.arc(0, 0, 300, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  for (let k = 0; k < 160; k++) { ctx.beginPath(); ctx.arc(Math.cos(k * 2.4) * Math.sqrt(k) * 22, Math.sin(k * 2.4) * Math.sqrt(k) * 22, 6, 0, 7); ctx.fill(); }
+  ctx.restore();
+  hamster(W / 2 - 20, H * .47 + 170, 8.2);
+  seedShape(250, 300, 4, -.5, false);
+  seedShape(800, 250, 4.4, .45, true);
+  seedShape(790, 760, 3.6, .9, false);
+}
+
+document.fonts.ready.then(() => {
+  // make sure every face is loaded before drawing text
+  return Promise.all(['118px "Lilita One"', '700 30px "Baloo 2"', '600 17px "JetBrains Mono"'].map(f => document.fonts.load(f)));
+}).then(() => { mode === 'icon' ? icon() : cover(); document.title = 'ready'; });
+</script>
+</body></html>

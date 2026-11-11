@@ -1,5 +1,7 @@
 # Cheek Pouch
 
+![Cheek Pouch: a crowned hamster with stuffed cheeks catching sunflower seeds at night](art/cheek-pouch-cover.png)
+
 An endless hamster arcade game for the Squeekchain hamster economy. Stuff sunflower seeds into your cheeks, dodge angry red-hot pebbles and the cat's paw, and carry your haul home to the burrow. The bigger the haul, the bigger the payout: n seeds bank for 1+2+…+n.
 
 **Play:** _add your site address here once it is live_
@@ -30,6 +32,7 @@ Nothing is signed and no keys are handled. Endpoints used:
 
 - `cheek-pouch.html` is the game source.
 - `index.html` is the hosted page, built from the source with `python3 build.py`.
+- `art/` holds the cover and icon images; `art/cover.html` draws them.
 - No build tools, no dependencies, no server.
 
 The shared leaderboard only works in the claude.ai copy of the game; on this site the board shows a note instead.
