@@ -108,8 +108,6 @@ header.top .intro { flex: 1 1 420px; min-width: 0; }
 .pill.idle { color: var(--wheel); }
 .pill.off { color: var(--danger); }
 @keyframes blink { 50% { opacity: .25; } }
-.usual { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
-.usual:empty { display: none; }
 .bar { height: 6px; background: var(--soil); border-radius: 3px; margin-top: 6px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--wheel); width: 0; transition: width .6s; }
 
@@ -314,7 +312,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     <div class="state">
       <div class="k">Real hamster</div>
       <span class="pill off" id="pill"><i></i><span id="pillText">Connecting</span></span>
-      <div class="usual" id="usualTxt"></div>
     </div>
     <div><div class="k">Wheel</div><div class="v" id="lvRpm">– <small>rpm</small></div></div>
     <div><div class="k">Work logged</div><div class="v" id="lvWork">–</div></div>
@@ -871,7 +868,6 @@ const SIM = (() => {
     else if (!live.fresh) { pill.className = 'pill off'; txt.textContent = 'Stale reading'; }
     else if (live.running) { pill.className = 'pill run'; txt.textContent = 'Running'; }
     else { pill.className = 'pill idle'; txt.textContent = 'Asleep'; }
-    renderUsual();
     if (!live.ok) return;
     $('lvRpm').innerHTML = `${live.rpm.toFixed(1)} <small>rpm · ${(live.speed / 1000).toFixed(2)} m/s</small>`;
     $('lvWork').textContent = live.work.toLocaleString();
@@ -906,62 +902,6 @@ const SIM = (() => {
         if (boardTab === 'blocks') renderBlocks(d);
       } catch (e) {}
     }, 2500);
-  }
-
-  // ---------- his usual hours, learned from the last 7 days of real wheel stats ----------
-  const STATS = 'https://api.squeekchain.com/v1/measurement/stats?range=7d';
-  let usual = { start: 21, end: 8, peak: 4 }; // UTC, as seen in Squeekchain's stats in Nov 2026
-  function usualWindow(work) {
-    const max = Math.max(...work);
-    if (!max) return null;
-    const on = work.map(w => w >= max * .05);
-    if (on.every(Boolean)) return null;
-    const s0 = on.findIndex(v => !v);
-    let bestW = null, cur = null, gap = 0;
-    for (let i = 1; i <= 24; i++) {
-      const h = (s0 + i) % 24;
-      if (on[h]) { if (!cur) cur = { start: h, len: 0 }; cur.len += gap + 1; gap = 0; }
-      else if (cur && ++gap > 1) { if (!bestW || cur.len > bestW.len) bestW = cur; cur = null; gap = 0; }
-    }
-    if (cur && (!bestW || cur.len > bestW.len)) bestW = cur;
-    return bestW && { start: bestW.start, end: (bestW.start + bestW.len) % 24, peak: work.indexOf(max) };
-  }
-  async function loadUsual() {
-    try {
-      const r = await fetch(STATS, { cache: 'no-store' });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const d = await r.json();
-      const work = Array(24).fill(0);
-      for (const day of (d.activity && d.activity.days) || [])
-        for (const b of day.buckets || []) work[Math.floor(b.startMinuteUtc / 60) % 24] += Number(b.workUnits) || 0;
-      usual = usualWindow(work) || usual;
-    } catch (e) { /* keep the last known schedule */ }
-    renderUsual();
-  }
-  function fmtHour(utcHour) {
-    const d = new Date(); d.setUTCHours(utcHour, 0, 0, 0);
-    return d.toLocaleTimeString([], d.getMinutes() ? { hour: 'numeric', minute: '2-digit' } : { hour: 'numeric' });
-  }
-  function inUsual(h) { return usual.start < usual.end ? h >= usual.start && h < usual.end : h >= usual.start || h < usual.end; }
-  function untilUsual() {
-    const now = new Date();
-    if (inUsual(now.getUTCHours())) return '';
-    const next = new Date(now); next.setUTCHours(usual.start, 0, 0, 0);
-    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
-    const mins = Math.round((next - now) / 60000);
-    return mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
-  }
-  function usualLine() {
-    if (!usual) return '';
-    if (live.ok && live.running) return 'Squeektoshi is running right now, so Free play banks pay ×2.';
-    const wait = untilUsual();
-    return `Squeektoshi usually runs ${fmtHour(usual.start)}–${fmtHour(usual.end)} your time. ` +
-      (wait ? `That starts in about ${wait}.` : `That's now, so he may wake any minute.`);
-  }
-  function renderUsual() {
-    const el = $('usualTxt');
-    if (el) el.textContent = usual && !(live.ok && live.running) ? `Usually runs ${fmtHour(usual.start)}–${fmtHour(usual.end)}` : '';
-    document.querySelectorAll('.usualSlot').forEach(n => { n.textContent = usualLine(); });
   }
 
   // ---------- account: wallet sign-in (free EIP-4361 signature, no transaction) ----------
@@ -1313,7 +1253,6 @@ const SIM = (() => {
     const el = $('modeBody');
     if (el) el.innerHTML = modeBodyHtml();
     document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === mode));
-    renderUsual();
   }
   function modePicker() {
     return `<div class="modes" role="tablist" aria-label="Game mode">
@@ -1341,8 +1280,7 @@ const SIM = (() => {
       </div>`}
       ${modePicker()}
       <button class="go" id="startBtn" type="button">Start run</button>
-      <p class="fine">Endless: it gets harder every 20 seconds. You have 3 hearts.</p>
-      <p class="fine usualSlot">${usualLine()}</p>`);
+      <p class="fine">Endless: it gets harder every 20 seconds. You have 3 hearts.</p>`);
     $('startBtn').onclick = start;
   }
   if (challenge) mode = 'daily';
@@ -1489,8 +1427,7 @@ const SIM = (() => {
         <button type="button" class="small" id="copyBtn">Copy challenge link</button>` : ''}
       </div>
       ${modePicker()}
-      <button class="go" type="button" id="againBtn">Run again</button>
-      <p class="fine usualSlot">${usualLine()}</p>`);
+      <button class="go" type="button" id="againBtn">Run again</button>`);
     $('againBtn').onclick = start; $('againBtn').focus();
     $('shareBtn').onclick = shareCard;
     if ($('copyBtn')) $('copyBtn').onclick = copyChallenge;
@@ -1669,7 +1606,7 @@ const SIM = (() => {
     if (mode === 'daily') st = ['Daily Burrow · same run for everyone · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
     else st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
       : live.running ? ['Real hamster RUNNING · banks ×2', '#1d2a12', 'rgba(159,209,111,.95)']
-      : [`Real hamster asleep${usual ? ` · usually wakes ${fmtHour(usual.start)}` : ''} · banks ×1`, '#f6ead7', 'rgba(20,13,9,.7)'];
+      : ['Real hamster asleep · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
     pillText(12, 78, st[0], st[1], st[2]);
     // active power-ups
     const h = s.ham;
@@ -2045,9 +1982,6 @@ const SIM = (() => {
   // ---------- boot ----------
   poll();
   setInterval(poll, 8000);
-  loadUsual();
-  setInterval(loadUsual, 30 * 60 * 1000);
-  setInterval(() => { if (state === 'ready' || state === 'over') renderUsual(); }, 60000);
   renderWardrobe();
   if (window.claude && typeof window.claude.use === 'function') initClaudeBoard(window.claude);
   else initWallet();

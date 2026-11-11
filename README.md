@@ -17,7 +17,6 @@ The game reads Squeekchain's public API every 8 seconds, straight from the brows
 - **Bonus bet.** Before a run you can bet on whether the real hamster will be on his wheel when the run ends. It settles on the live feed at that moment; a stale reading cancels it.
 - **Squeek perks.** Paste a wallet address to unlock cosmetic perks from real holdings: a crown (hold 1+ Squeek), sunglasses (stake 1+), a scarf (own a level 2+ Squeek) and golden fur (hold 10+). Perks never change the score.
 - **Live strip.** Wheel RPM and speed, work logged, the settled round, and progress toward the next block.
-- **His usual hours.** The last 7 days of wheel stats give Squeektoshi's usual running window, shown in each player's own time zone with a countdown to his next likely run.
 - **Wallet sign-in and saved progress.** Players sign a free "Sign in with Ethereum" message (no gas, no transaction). Best score, best level, runs played and Squeek perks are saved to their wallet and follow them to any device, and the leaderboard marks Squeek holders with ♛. The server times every run itself and rejects scores that are impossible for the run's length.
 
 No transactions are sent and no keys are handled; the only signature is the free sign-in message. Squeekchain endpoints used:
@@ -26,7 +25,7 @@ No transactions are sent and no keys are handled; the only signature is the free
 |---|---|
 | `GET https://api.squeekchain.com/v1/status` | wheel state, RPM, speed, cumulative work, block height and progress, settled round |
 | `GET https://api.squeekchain.com/v1/accounts/{address}` | Squeek counts, staked count and levels, for perks |
-| `GET https://api.squeekchain.com/v1/measurement/stats?range=7d` | his usual running hours |
+| `GET https://api.squeekchain.com/v1/measurement/stats?range=7d` | yesterday's wheel work, which sets the Daily Burrow's golden seeds (server) |
 
 ## Gameplay
 

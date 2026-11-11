@@ -20,7 +20,6 @@ The game is tied to the real wheel on Squeekchain's public API, checked every 8 
 - Every increase in `cumulativeWorkUnits` drops golden seeds (+20 each) into every open run. Each completed Squeekchain block drops a golden shower.
 - An optional bonus bet settles on real data: "When your run ends, will the real hamster be on his wheel?" The answer is read from the live feed at that moment; a stale reading cancels the bet.
 - Players sign in with their wallet (a free signed message, no transaction) to save progress across devices and join the leaderboard; the server times each run and rejects impossible scores.
-- Each player sees Squeektoshi's usual running hours in their own time zone, worked out from the last 7 days of `/v1/measurement/stats`.
 - Squeek holders can look up their wallet, read-only, to unlock cosmetic perks from real holdings: a crown (hold 1+), sunglasses (stake 1+), a scarf (own a level 2+ Squeek from merging) and golden fur (hold 10+). Perks never change the score, so the leaderboard stays fair.
 - A live strip shows wheel RPM, speed, work logged, the settled round and progress toward the next block.
 
