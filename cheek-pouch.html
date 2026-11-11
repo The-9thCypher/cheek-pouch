@@ -52,6 +52,16 @@ h1 {
   text-shadow: 0 3px 0 #7a4a1c;
 }
 .tag { margin: 6px 0 0; color: var(--muted); max-width: 60ch; }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 14px 24px; }
+header.top .intro { flex: 1 1 420px; min-width: 0; }
+.account { flex: 0 1 280px; display: grid; gap: 8px; justify-items: end; background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 14px; padding: 12px; }
+.account .inp { width: 100%; box-sizing: border-box; }
+.account .src { margin: 0; font-size: 12px; text-align: right; }
+.account .src:empty { display: none; }
+.acct-row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.who { font-family: var(--mono); font-size: 13px; color: var(--cream); }
+.who i { font-style: normal; color: var(--seed); }
+.go-sm { font-size: 1rem; padding: 6px 18px; box-shadow: 0 3px 0 #a2721d; }
 .tag b { color: var(--cream); font-weight: 600; }
 
 /* live strip */
@@ -202,6 +212,9 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   .live > .state { grid-column: 1 / -1; }
 }
 @media (max-width: 560px) {
+  .account { flex-basis: 100%; justify-items: stretch; }
+  .account .src { text-align: left; }
+  .acct-row { justify-content: space-between; }
   /* the playfield is too short on phones for the start/end card, so the card takes its place */
   .field:has(.overlay:not([hidden])) canvas { display: none; }
   .overlay { position: static; background: var(--soil-2); padding: 16px 12px; }
@@ -217,9 +230,20 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 </style>
 
 <div class="wrap">
-  <header>
-    <h1>Cheek Pouch</h1>
-    <p class="tag">Stuff your cheeks with sunflower seeds and carry them home. The game follows <b>Squeektoshi, the real hamster</b> on Squeekchain: when he runs his wheel, it turns day and every bank pays double.</p>
+  <header class="top">
+    <div class="intro">
+      <h1>Cheek Pouch</h1>
+      <p class="tag">Stuff your cheeks with sunflower seeds and carry them home. The game follows <b>Squeektoshi, the real hamster</b> on Squeekchain: when he runs his wheel, it turns day and every bank pays double.</p>
+    </div>
+    <div class="account" aria-label="Your account">
+      <div class="acct-row">
+        <span class="who" id="acctWho" hidden></span>
+        <button type="button" class="go go-sm" id="signBtn" hidden>Sign in with wallet</button>
+      </div>
+      <label class="sr" for="nick">Your name on the board</label>
+      <input class="inp" id="nick" type="text" maxlength="16" placeholder="Your name on the board" autocomplete="off">
+      <p class="src" id="acctNote"></p>
+    </div>
   </header>
 
   <section class="live" aria-label="Live wheel feed">
@@ -264,11 +288,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       <div class="box" id="boardBox">
         <h3>Top burrowers</h3>
         <ol class="board" id="board"><li class="empty">Loading the board…</li></ol>
-        <div class="row">
-          <label class="sr" for="nick">Your name on the board</label>
-          <input class="inp" id="nick" type="text" maxlength="16" placeholder="Your name on the board" autocomplete="off">
-        </div>
-        <button type="button" class="small" id="signBtn" hidden>Sign in with wallet</button>
         <p class="src" id="boardNote">Your best run is posted when it beats your last one.</p>
       </div>
 
@@ -438,7 +457,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   const API_URL = 'https://cheek-pouch-api.cheek-pouch-api.workers.dev';
   let walletMode = false, session = null, player = null, runId = null;
   try { const saved = JSON.parse(localStorage.getItem('cheekpouch.session') || 'null'); if (saved && saved.token) session = saved; } catch (e) {}
-  const signBtn = $('signBtn');
+  const signBtn = $('signBtn'), acctWho = $('acctWho'), acctNote = $('acctNote');
   const shortAddr = a => a.slice(0, 6) + '…' + a.slice(-4);
 
   async function api(path, { method = 'GET', body } = {}) {
@@ -465,23 +484,28 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     if (p.bestScore > best) saveBest(p.bestScore);
     renderWallet();
   }
+  // the account block, top right of the page
   function renderWallet() {
     if (!walletMode) return;
+    const signedIn = !!(session && player);
     signBtn.hidden = false;
-    if (session && player) {
-      signBtn.textContent = 'Sign out';
-      boardNote.textContent = `Signed in as ${shortAddr(player.address)}. Best ${player.bestScore}, ${player.runs} run${player.runs === 1 ? '' : 's'} saved.`;
+    acctWho.hidden = !signedIn;
+    nickIn.hidden = !signedIn;
+    if (signedIn) {
+      signBtn.textContent = 'Sign out'; signBtn.className = 'small';
+      acctWho.innerHTML = (player.perks.crown ? '<i>♛</i> ' : '') + shortAddr(player.address);
+      acctNote.textContent = `Best ${player.bestScore} · ${player.runs} run${player.runs === 1 ? '' : 's'} saved`;
     } else if (window.ethereum && window.ethereum.request) {
-      signBtn.textContent = 'Sign in with wallet';
-      boardNote.textContent = 'Sign in to save your progress to your wallet and join the board. Free, no transaction.';
+      signBtn.textContent = 'Sign in with wallet'; signBtn.className = 'go go-sm';
+      acctNote.textContent = 'Save your progress and join the board. Free, no transaction.';
     } else {
       signBtn.hidden = true;
-      boardNote.textContent = 'To save progress, open cheek-pouch.live in your wallet app\'s browser (MetaMask, Coinbase Wallet, Rainbow…) and sign in.';
+      acctNote.textContent = 'To save progress, open cheek-pouch.live in your wallet app\'s browser (MetaMask, Coinbase Wallet, Rainbow) and sign in.';
     }
   }
   async function signIn() {
     try {
-      boardNote.textContent = 'Check your wallet…';
+      acctNote.textContent = 'Check your wallet…';
       const [addr] = await window.ethereum.request({ method: 'eth_requestAccounts' });
       const { message } = await api('/auth/nonce', { method: 'POST', body: { address: addr } });
       const hexMsg = '0x' + [...new TextEncoder().encode(message)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -494,7 +518,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       loadWalletBoard();
     } catch (e) {
       renderWallet();
-      boardNote.textContent = e && e.code === 4001 ? 'Sign-in cancelled in your wallet.' : (e && e.message) || 'Sign-in failed. Try again.';
+      acctNote.textContent = e && e.code === 4001 ? 'Sign-in cancelled in your wallet.' : (e && e.message) || 'Sign-in failed. Try again.';
     }
   }
   signBtn.onclick = () => {
@@ -526,6 +550,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   }
   async function initWallet() {
     walletMode = true;
+    boardNote.textContent = 'Best run per wallet.';
     renderWallet();
     loadWalletBoard();
     setInterval(loadWalletBoard, 60000);
