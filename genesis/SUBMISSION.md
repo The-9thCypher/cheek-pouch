@@ -13,16 +13,16 @@ An endless hamster arcade game where the real Squeektoshi sets the pace: when he
 
 ## Description (paste into the project form)
 
-Cheek Pouch is a one-screen arcade game for the hamster economy. You play a hamster stuffing sunflower seeds into its cheeks and carrying them home to the burrow. A bigger haul banks for much more (n seeds pay 1+2+…+n), but full cheeks slow you down, and angry red-hot pebbles and a cat's paw knock half your haul loose. The game is endless and gets harder every 20 seconds, adding faster pebbles, pairs, pebble storms and double swipes.
+Cheek Pouch is a one-screen arcade game for the hamster economy. You play a hamster stuffing sunflower seeds into its cheeks and carrying them home to the burrow. A bigger haul banks for much more (n seeds pay 1+2+…+n), but full cheeks slow you down, and angry red-hot pebbles, a cat's paw and a swooping owl knock half your haul loose. The game is endless and gets harder every 20 seconds, with wind, storms and puddles along the way; power-ups (helmet, magnet, big cheeks) drop from the sunflowers.
 
-The game is tied to the real wheel on Squeekchain's public API, checked every 8 seconds:
-- While Squeektoshi is running, the sky turns to day, seeds fall faster as his RPM rises, and every bank pays ×2. While he rests, the game plays at night at ×1.
-- Every increase in `cumulativeWorkUnits` drops golden seeds (+20 each) into every open run. Each completed Squeekchain block drops a golden shower.
-- Players sign in with their wallet (a free signed message, no transaction) to save progress across devices and join the leaderboard; the server times each run and rejects impossible scores.
-- Squeek holders can look up their wallet, read-only, to unlock cosmetic perks from real holdings: a crown (hold 1+), sunglasses (stake 1+), a scarf (own a level 2+ Squeek from merging) and golden fur (hold 10+). Perks never change the score, so the leaderboard stays fair.
-- A live strip shows wheel RPM, speed, work logged, the settled round and progress toward the next block.
+How it uses Squeekchain:
+- Free play follows the live wheel (`/v1/status`): while Squeektoshi runs, the sky turns to day, seeds fall faster and every bank pays ×2; every increase in `cumulativeWorkUnits` drops golden seeds, and each completed block drops a golden shower. Squeektoshi sits in the in-game wheel, asleep or running.
+- The Daily Burrow gives everyone the same run each day; yesterday's real wheel work (`/v1/measurement/stats`) sets how many golden seeds fall. The server replays every run's key presses with the same game code, so only verified runs reach the boards.
+- Block Champion: each Squeekchain block goes to the best Daily Burrow score set while it was being mined.
+- Squeek holders unlock wardrobe items from their real holdings (`/v1/accounts`): a crown, staker shades, a merge scarf and golden fur. Outfits never change the score.
+- Wallet sign-in is a free signed message, no transaction. Progress follows the wallet: XP and hamster level, streaks, daily and weekly missions, the leader's ghost, challenge links and share cards.
 
-Nothing is signed and no keys are handled. The wallet lookup only reads `GET /v1/accounts/{address}`.
+No transactions are sent and no keys are handled; the only signature is the free sign-in message.
 
 ## Squeekchain endpoints used
 

@@ -379,7 +379,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
           <h3>Competitions</h3>
           <ul>
             <li><b>Daily Burrow</b>: the same run for everyone, resetting at midnight UTC. Runs are checked by replaying your key presses. The top three keep a podium.</li>
-            <li><b>Block Champion</b>: the best score set while a Squeekchain block is mined wins that block.</li>
+            <li><b>Block Champion</b>: the best Daily Burrow score set while a Squeekchain block is mined wins that block.</li>
+            <li><b>Free play</b> is practice: it keeps your streak and counts toward run missions, but only verified Daily Burrow runs reach the boards and earn score XP.</li>
             <li><b>Streaks</b>: play on back-to-back days for bonus XP.</li>
           </ul>
         </div>
@@ -624,8 +625,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       const d = await api('/auth/verify', { method: 'POST', body: { message, signature } });
       setSession({ token: d.token });
       applyPlayer(d.player);
-      const typed = nickIn.value.trim();
-      if (typed && typed !== d.player.nick) patchMe({ nick: typed });
       loadBoard(); loadDaily();
     } catch (e) {
       renderAccount();
@@ -693,17 +692,17 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     $('blockNow').hidden = boardTab !== 'blocks';
     try {
       if (boardTab === 'daily') {
-        const d = dailyInfo && dailyInfo.day === todayUTC() ? await refreshDaily() : await loadDaily();
+        const d = await loadDaily();
         if (!d) { boardMsg('The board could not be loaded right now.'); return; }
         if (!d.top.length) boardMsg('No Daily Burrow runs today yet. Be the first!'); else boardRows(d.top, 'score', 'level');
         boardNote.textContent = `Daily Burrow, ${fmtDay(d.day)}. Resets at midnight UTC.` + (d.me ? ` You're #${d.me.rank}.` : '');
       } else if (boardTab === 'all') {
         const { players } = await api('/leaderboard');
         if (!players.length) boardMsg('No runs saved yet. Sign in and be the first!'); else boardRows(players, 'bestScore', 'bestLevel');
-        boardNote.textContent = 'Best run per wallet, any mode.';
+        boardNote.textContent = 'Best verified Daily Burrow run per wallet.';
       } else {
         renderBlocks(await api('/blocks'));
-        boardNote.textContent = 'Every Squeekchain block goes to the best score set while it was mined.';
+        boardNote.textContent = 'Every Squeekchain block goes to the best Daily Burrow score set while it was mined.';
       }
     } catch (e) { boardMsg('The board could not be loaded right now.'); }
   }
@@ -757,7 +756,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       return d;
     } catch (e) { return null; }
   }
-  async function refreshDaily() { return loadDaily(); }
   async function loadGhost(day) {
     try { ghostData = (await api('/daily/ghost?day=' + day)).ghost; } catch (e) { ghostData = null; }
     if (state === 'ready' || state === 'over') renderModeBody();
@@ -900,7 +898,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         ${g ? `<label class="check"><input type="checkbox" id="ghostBox" ${ghostOn ? 'checked' : ''}> Race ${esc(g.nick || g.address)}'s ghost (${g.score})</label>` : ''}
         ${past ? `<p>This is ${fmtDay(past)}'s run, so it's practice: it won't be saved.</p>` : session ? '' : '<p>Practice works signed out. <b>Sign in</b> to post your run to the board.</p>'}`;
     }
-    return `<p><b>Live from Squeekchain:</b> banks pay ×2 while Squeektoshi runs, and his real wheel work drops golden seeds.</p>`;
+    return `<p><b>Live from Squeekchain:</b> banks pay ×2 while Squeektoshi runs, and his real wheel work drops golden seeds.</p>
+      <p>Free play is for fun and practice. It counts toward your streak and run missions; Daily Burrow runs reach the boards and earn score XP.</p>`;
   }
   function renderModeBody() {
     const el = $('modeBody');
@@ -1009,9 +1008,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         try {
           const body = mode === 'daily'
             ? { score: final, level: s.level, ticks: s.tick, inputs: rec }
-            : { score: final, level: s.level, stats: s.stats };
+            : { score: final, level: s.level };
           res = await api(`/runs/${run.id}/finish`, { method: 'POST', body });
           applyPlayer(res.player);
+          if (!res.verified) msg = 'Free play is practice: it counted toward your streak and run missions. Daily Burrow runs reach the boards.';
         } catch (e) { msg = e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
       }
     } else msg = await postClaudeScore(final, secs);
@@ -1036,7 +1036,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       if (res.isBest) badges.push(`<span class="badge gold">New personal best</span>`);
       for (const m of res.missionsDone) badges.push(`<span class="badge gold">✓ ${esc(m.title)} +${m.xp} XP</span>`);
       if (res.levelUp) {
-        const fresh = Object.values(COSMETICS).flat().filter(c => c.lvl === res.levelUp);
+        const fresh = Object.values(COSMETICS).flat().filter(c => c.lvl > res.levelFrom && c.lvl <= res.levelUp);
         if (fresh.length) badges.push(`<span class="badge gold">Unlocked: ${fresh.map(c => esc(c.name)).join(', ')}</span>`);
       }
     }

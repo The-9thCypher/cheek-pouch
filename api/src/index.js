@@ -9,8 +9,6 @@ const ALLOWED_ORIGINS = new Set([
   'https://cheek-pouch.live',
   'https://www.cheek-pouch.live',
   'https://the-9thcypher.github.io',
-  'http://127.0.0.1:8767',
-  'http://localhost:8767',
 ]);
 const SITE = 'cheek-pouch.live';
 const NONCE_TTL = 10 * 60;            // seconds
@@ -18,6 +16,8 @@ const SESSION_TTL = 30 * 24 * 3600;   // seconds
 const HOLDINGS_TTL = 60 * 60;         // refresh Squeek holdings at most hourly
 const STATUS_TTL = 30 * 1000;         // ms; Squeekchain status cache
 const MAX_INPUTS = 40000;             // flat [tick, bits] entries in one replay
+const MAX_OPEN_NONCES = 5;            // unexpired sign-in requests per address
+const MAX_RUNS_PER_MINUTE = 6;        // run starts per player per minute
 
 const DAILY_POOL = [
   { id: 'haul8', title: 'Bank 8+ seeds in one trip', metric: 'maxHaul', goal: 8, run: true },
@@ -25,7 +25,7 @@ const DAILY_POOL = [
   { id: 'gold2', title: 'Catch 2 golden seeds in one run', metric: 'golds', goal: 2, run: true },
   { id: 'pts400', title: 'Bank 400 points today', metric: 'score', goal: 400 },
   { id: 'runs3', title: 'Play 3 runs', metric: 'runs', goal: 3 },
-  { id: 'paw4', title: 'Hop over 4 cat paws', metric: 'pawsDodged', goal: 4 },
+  { id: 'paw4', title: 'Survive 4 cat paws', metric: 'pawsDodged', goal: 4 },
   { id: 'power1', title: 'Grab a power-up', metric: 'powerups', goal: 1 },
   { id: 'daily1', title: "Play today's Daily Burrow", metric: 'daily', goal: 1 },
   { id: 'seeds60', title: 'Catch 60 seeds', metric: 'seeds', goal: 60 },
@@ -52,9 +52,10 @@ function addDays(day, n) { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(
 function weekStart(day) { const d = new Date(day + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return d.toISOString().slice(0, 10); }
 const short = a => a.slice(0, 6) + '…' + a.slice(-4);
 
+let devOrigin = null; // set from env.DEV_ORIGIN for local testing only
 function cors(req) {
   const origin = req.headers.get('Origin');
-  return ALLOWED_ORIGINS.has(origin)
+  return ALLOWED_ORIGINS.has(origin) || (devOrigin && origin === devOrigin)
     ? { 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin', 'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS', 'Access-Control-Max-Age': '86400' }
     : { 'Vary': 'Origin' };
 }
@@ -178,6 +179,8 @@ async function nonce(req, env) {
   const { address } = await body(req);
   if (!address || !isAddress(address, { strict: false })) return fail(req, 400, 'bad_address', 'That is not a wallet address.');
   const checksummed = getAddress(address);
+  const open = await env.DB.prepare('SELECT COUNT(*) AS n FROM nonces WHERE address = ? AND expires_at > ?').bind(checksummed.toLowerCase(), nowS()).first();
+  if (open.n >= MAX_OPEN_NONCES) return fail(req, 429, 'slow_down', 'Too many sign-in attempts. Wait a few minutes and try again.');
   const n = randomHex(16);
   const message =
     `${SITE} wants you to sign in with your Ethereum account:\n${checksummed}\n\n` +
@@ -295,14 +298,16 @@ async function applyMissions(env, address, day, metrics) {
 async function startRun(req, env, address) {
   const b = await body(req);
   const mode = b.mode === 'daily' ? 'daily' : 'classic';
+  const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM runs WHERE address = ? AND started_at > ?').bind(address, nowS() - 60).first();
+  if (recent.n >= MAX_RUNS_PER_MINUTE) return fail(req, 429, 'slow_down', 'Too many runs started in a minute. Take a breath and try again.');
   const id = randomHex(16), day = today();
+  // the daily plan is fixed when the run starts, so the replay uses exactly what the player saw
+  const info = mode === 'daily' ? await dailyInfo(env, day) : null;
   await env.DB.batch([
     env.DB.prepare('DELETE FROM runs WHERE started_at < ?').bind(nowS() - 24 * 3600),
-    env.DB.prepare('INSERT INTO runs (id, address, started_at, mode, day) VALUES (?, ?, ?, ?, ?)').bind(id, address, nowS(), mode, day),
+    env.DB.prepare('INSERT INTO runs (id, address, started_at, mode, day, work) VALUES (?, ?, ?, ?, ?, ?)').bind(id, address, nowS(), mode, day, info ? info.work : null),
   ]);
-  const out = { runId: id, mode, day };
-  if (mode === 'daily') Object.assign(out, await dailyInfo(env, day));
-  return json(req, out);
+  return json(req, { runId: id, mode, day, ...(info || {}) });
 }
 
 function validInputs(inputs, ticks) {
@@ -329,26 +334,21 @@ async function finishRun(req, env, address, id) {
   };
   if (!Number.isFinite(score) || !Number.isFinite(level) || score < 0 || level < 1) return reject();
 
-  let stats, ticks = 0, inputs = null;
-  if (run.mode === 'daily') {
-    // replay the key presses on the same day's run and compare
+  // Free play can't be replayed (its live events can't be reproduced), so it is practice:
+  // it counts as a run for streaks and run-count missions, but only verified Daily Burrow runs
+  // reach the boards, Block Champion and XP.
+  const verified = run.mode === 'daily';
+  let stats = { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0 }, ticks = 0, inputs = null;
+  if (verified) {
     ticks = Math.floor(Number(b.ticks));
     inputs = b.inputs;
     if (!Number.isInteger(ticks) || ticks < 1 || !validInputs(inputs, ticks)) return reject('That run could not be read, so it was not saved.');
     if (ticks / SIM.HZ > secs * 1.1 + 5) return reject('That run was faster than real time, so it was not saved.');
-    const info = await dailyInfo(env, run.day);
-    const s = SIM.replay({ seed: info.seed, goldTicks: info.goldTicks, mult: 1 }, inputs, ticks);
+    const work = run.work != null ? run.work : (await dailyInfo(env, run.day)).work;
+    const plan = SIM.goldPlan(run.day, work);
+    const s = SIM.replay({ seed: SIM.daySeed(run.day), goldTicks: plan.ticks, mult: 1 }, inputs, ticks);
     if (!s.over || s.tick !== ticks || s.score !== score || s.level !== level) return reject('That run did not replay the same way, so it was not saved.');
     stats = s.stats;
-  } else {
-    const maxLevel = 1 + Math.floor(secs / SIM.LEVEL_SECS) + 1;
-    if (level > maxLevel || score > 40 * secs + 400) return reject();
-    const c = b.stats || {}, cap = (v, max) => Math.max(0, Math.min(Math.floor(Number(v) || 0), Math.floor(max)));
-    stats = {
-      seeds: cap(c.seeds, secs * 4 + 20), golds: cap(c.golds, 40), maxHaul: cap(c.maxHaul, SIM.CAP_BIG), fullHauls: cap(c.fullHauls, secs / 5 + 1),
-      pawsDodged: cap(c.pawsDodged, secs / 4 + 1), owlsDodged: cap(c.owlsDodged, secs / 6 + 1), powerups: cap(c.powerups, secs / 14 + 1),
-      hits: cap(c.hits, 3), hops: cap(c.hops, secs * 3 + 5),
-    };
   }
 
   const p = await getPlayer(env, address);
@@ -359,7 +359,7 @@ async function finishRun(req, env, address, id) {
   // Block Champion: the best score set while the current Squeekchain block is mined
   const st = await squeekStatus();
   let block = null;
-  if (st) {
+  if (st && verified) {
     const cur = await env.DB.prepare('SELECT address, score FROM block_best WHERE block = ?').bind(st.block).first();
     const lead = !cur || score > cur.score;
     if (lead) await env.DB.prepare('INSERT INTO block_best (block, address, score, at) VALUES (?, ?, ?, ?) ON CONFLICT (block) DO UPDATE SET address = excluded.address, score = excluded.score, at = excluded.at')
@@ -368,14 +368,15 @@ async function finishRun(req, env, address, id) {
   }
 
   const metrics = {
-    ...stats, score, level, runs: 1, daily: run.mode === 'daily' ? 1 : 0, newDay: newDay ? 1 : 0,
+    ...stats, score: verified ? score : 0, level: verified ? level : 0, runs: 1, daily: verified ? 1 : 0, newDay: newDay ? 1 : 0,
     awake: st && st.running ? 1 : 0, blockLead: block && block.took ? 1 : 0,
   };
   const ms = await applyMissions(env, address, day, metrics);
   const streakXp = newDay ? Math.min(10 * streak, 100) : 0;
-  const xpGained = score + 25 + streakXp + ms.xp;
+  const xpGained = (verified ? score + 25 : 0) + streakXp + ms.xp;
   const lvlBefore = SIM.levelForXp(p.xp || 0), lvlAfter = SIM.levelForXp((p.xp || 0) + xpGained);
-  const isBest = score > p.best_score;
+  const isBest = verified && score > p.best_score;
+  const bestScore = verified ? score : 0; // Free play never sets the all-time best
 
   const writes = [
     env.DB.prepare('UPDATE runs SET finished_at = ?, score = ?, level = ? WHERE id = ?').bind(nowS(), score, level, id),
@@ -386,10 +387,10 @@ async function finishRun(req, env, address, id) {
          best_secs  = CASE WHEN ? > best_score THEN ? ELSE best_secs END,
          best_score = MAX(best_score, ?)
        WHERE address = ?`
-    ).bind(score, nowS(), xpGained, streak, streak, day, score, level, score, secs, score, address),
+    ).bind(bestScore, nowS(), xpGained, streak, streak, day, bestScore, level, bestScore, secs, bestScore, address),
   ];
   let daily = null;
-  if (run.mode === 'daily') {
+  if (verified) {
     const prev = await env.DB.prepare('SELECT score FROM daily_best WHERE day = ? AND address = ?').bind(run.day, address).first();
     if (!prev || score > prev.score) {
       writes.push(env.DB.prepare(
@@ -408,7 +409,7 @@ async function finishRun(req, env, address, id) {
   const rank = await env.DB.prepare('SELECT COUNT(*) + 1 AS rank FROM players WHERE best_score > ?').bind(fresh.best_score).first();
   return json(req, {
     player: await publicPlayer(env, fresh), isBest, rank: rank.rank, daily, block,
-    xpGained, streakXp, levelUp: lvlAfter > lvlBefore ? lvlAfter : null, missionsDone: ms.completed, streak, stats,
+    xpGained, streakXp, levelUp: lvlAfter > lvlBefore ? lvlAfter : null, levelFrom: lvlBefore, missionsDone: ms.completed, streak, verified,
   });
 }
 
@@ -465,6 +466,7 @@ async function blocks(req, env) {
 
 export default {
   async fetch(req, env) {
+    devOrigin = env.DEV_ORIGIN || null;
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     const path = new URL(req.url).pathname.replace(/\/+$/, '') || '/';
     try {
