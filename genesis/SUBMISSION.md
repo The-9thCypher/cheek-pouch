@@ -1,5 +1,12 @@
 # Cheek Pouch — Genesis Code Lane submission
 
+## Project details
+
+- **Builder:** The-9thCypher
+- **Builder wallet:** `0x6d230066601100630134a7d694a4d873e273c530`
+- **Live site:** https://the-9thcypher.github.io/cheek-pouch/ (switch to your own domain once it is set up)
+- **Repository:** https://github.com/The-9thCypher/cheek-pouch
+
 ## One-line pitch
 
 An endless hamster arcade game where the real Squeektoshi sets the pace: when he runs his wheel it turns day and every bank pays double, and every unit of work he logs drops golden seeds into your run.

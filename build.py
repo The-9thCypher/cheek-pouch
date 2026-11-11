@@ -11,7 +11,7 @@ from pathlib import Path
 # The site's public address, e.g. "https://play.example.com/" (keep the
 # trailing slash). Link previews on X, Discord and Telegram need the full
 # address of the cover image, so set this once the domain is live and rebuild.
-SITE_URL = ""
+SITE_URL = "https://the-9thcypher.github.io/cheek-pouch/"
 
 ROOT = Path(__file__).parent
 TITLE = "Cheek Pouch"
