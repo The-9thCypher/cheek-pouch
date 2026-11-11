@@ -54,9 +54,9 @@ const SIM = (() => {
       ham: { x: 330, y: GROUND, vy: 0, ground: true, held: [], face: 1, inv: 0, step: 0, squash: 0, helmet: false, magnet: 0, stretch: 0, px: 330, py: GROUND },
       items: [], queue: [], wobble: [0, 0, 0, 0, 0], paw: null, owl: null, wind: null, puddles: [],
       nextSeed: 0.3, nextPebble: 5, nextPaw: 16, nextPower: 14, nextWind: 3, nextOwl: 3, nextPuddle: 2,
-      doublePaw: false, lastPawSide: 1,
+      doublePaw: false, lastPawSide: 1, boss: null, bosses: 0,
       goldTicks: goldTicks.slice().sort((a, b) => a - b), goldIdx: 0,
-      stats: { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0 },
+      stats: { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0, bossesBeaten: 0 },
       ev: [],
     };
     const cap = () => (s.ham.stretch > 0 ? CAP_BIG : CAP);
@@ -87,6 +87,7 @@ const SIM = (() => {
       if (h.inv > 0) return;
       if (h.helmet) { h.helmet = false; h.inv = 1; emit({ type: 'shield', x: h.x, y: h.y }); return; }
       s.hearts--; h.inv = 1.5; s.stats.hits++;
+      if (s.boss) s.boss.hurt = true;
       const spill = Math.ceil(h.held.length / 2);
       const lost = h.held.splice(h.held.length - spill, spill);
       lost.forEach((k, i) => {
@@ -113,7 +114,16 @@ const SIM = (() => {
       s.tick++; s.t = s.tick * DT;
       const d = s.t / LEVEL_SECS;
       const lv = 1 + Math.floor(d);
-      if (lv > s.level) { s.level = lv; emit({ type: 'level', level: lv }); }
+      if (lv > s.level) {
+        s.level = lv; emit({ type: 'level', level: lv });
+        // every second level the big cat attacks: three heavy swipes, then a jackpot if you dodge them all
+        if (lv % 2 === 0 && !s.boss) {
+          const k = s.bosses++, first = r() < .5 ? -1 : 1, sides = [first];
+          for (let i = 1; i < 3; i++) sides.push(r() < .65 ? -sides[i - 1] : sides[i - 1]);
+          s.boss = { sides, next: 0, wait: 2.2, hurt: false, warn: Math.max(.6, 1 - .05 * k), speed: Math.min(1400, 850 + 50 * k), gap: Math.max(.45, 1.1 - .08 * k) };
+          emit({ type: 'boss', level: lv });
+        }
+      }
       h.px = h.x; h.py = h.y;
       for (const it of s.items) { it.px = it.x; it.py = it.y; }
 
@@ -129,7 +139,7 @@ const SIM = (() => {
         if (s.t >= q.at) { spawn(q.kind, FLOWERS[q.i] + (r() - .5) * 30, 40, q.sub); s.queue.splice(i, 1); }
       }
       s.nextPebble -= DT;
-      if (s.nextPebble <= 0) {
+      if (s.nextPebble <= 0 && !s.boss) {
         const x = r();
         const count = s.level >= 5 ? (x < .3 ? 3 : x < .6 ? 2 : 1) : s.level >= 3 ? (x < .35 ? 2 : 1) : 1;
         const x0 = 150 + r() * (600 - (count - 1) * 85);
@@ -137,7 +147,24 @@ const SIM = (() => {
         s.nextPebble = Math.max(.55, (3 + r() * 1.6) / (1 + d * .45));
       }
       s.nextPaw -= DT;
-      if (s.nextPaw <= 0 && !s.paw) {
+      const b = s.boss;
+      if (b && !s.paw) {
+        if (b.wait > 0) b.wait -= DT;
+        else if (b.next < b.sides.length) {
+          const side = b.sides[b.next++];
+          s.paw = { side, warn: b.warn, speed: b.speed, x: 0, hit: false, big: true, reach: 64, pad: 44 };
+          b.wait = b.gap; emit({ type: 'warn', big: true });
+        } else {
+          s.boss = null; s.nextPaw = Math.max(s.nextPaw, 4);
+          if (!b.hurt) {
+            s.stats.bossesBeaten++;
+            for (let i = 0; i < 14; i++) drop('seed', i * .12, i);
+            drop('gold', .5, 1); drop('gold', .9, 3);
+            emit({ type: 'jackpot' });
+          } else emit({ type: 'bossFail' });
+        }
+      }
+      if (s.nextPaw <= 0 && !s.paw && !s.boss) {
         const side = s.doublePaw ? -s.lastPawSide : (r() < .5 ? -1 : 1);
         s.paw = { side, warn: Math.max(.75, 1.3 - .06 * d), speed: Math.min(1300, 700 + 60 * d), x: 0, hit: false };
         s.lastPawSide = side; emit({ type: 'warn' });
@@ -152,7 +179,7 @@ const SIM = (() => {
       }
       if (s.level >= 6) {
         s.nextOwl -= DT;
-        if (s.nextOwl <= 0 && !s.owl) {
+        if (s.nextOwl <= 0 && !s.owl && !s.boss) {
           const side = r() < .5 ? -1 : 1;
           s.owl = { side, warn: Math.max(.7, 1.1 - .03 * d), tx: h.x, x: side < 0 ? -60 : W + 60, y: 40, k: 0, dur: Math.max(.6, 1 - .03 * d), hit: false };
           s.nextOwl = Math.max(6, 14 - .8 * d) + r() * 4; emit({ type: 'owl' });
@@ -243,8 +270,12 @@ const SIM = (() => {
         else {
           const x0 = p.x;
           p.x += -p.side * p.speed * DT;
-          const lo = Math.min(x0, p.x) - 32, hi = Math.max(x0, p.x) + 32;
-          if (!p.hit && h.x > lo && h.x < hi && h.y > GROUND - 40) { p.hit = true; hurt('Swiped'); if (s.over) return; }
+          const pad = p.pad || 32, reach = p.reach || 40;
+          const lo = Math.min(x0, p.x) - pad, hi = Math.max(x0, p.x) + pad;
+          if (!p.hit && h.x > lo && h.x < hi) {
+            if (h.y > GROUND - reach) { p.hit = true; hurt(p.big ? 'Big swipe' : 'Swiped'); if (s.over) return; }
+            else if (!p.near && h.y > GROUND - reach - 30) { p.near = true; emit({ type: 'near', x: h.x, y: h.y }); }
+          }
           if (p.x < -160 || p.x > W + 160) { if (!p.hit) s.stats.pawsDodged++; s.paw = null; }
         }
       }
@@ -258,8 +289,11 @@ const SIM = (() => {
           const sx = o.side < 0 ? -60 : W + 60, ex = o.side < 0 ? W + 60 : -60;
           if (o.k <= 1) { o.x = sx + (o.tx - sx) * o.k; o.y = 40 + (GROUND - 34 - 40) * o.k; }
           else { const k2 = o.k - 1; o.x = o.tx + (ex - o.tx) * k2; o.y = GROUND - 34 - (GROUND - 34 - 40) * k2; }
-          const ox = o.x - h.x, oy = o.y - (h.y - R);
-          if (!o.hit && ox * ox + oy * oy < 36 * 36) { o.hit = true; hurt('Owl'); if (s.over) return; }
+          const ox = o.x - h.x, oy = o.y - (h.y - R), d2 = ox * ox + oy * oy;
+          if (!o.hit && d2 < 36 * 36) { o.hit = true; hurt('Owl'); if (s.over) return; }
+          // closest pass just went by without a hit
+          if (!o.hit && !o.near && o.d2 != null && d2 > o.d2 && o.d2 < 64 * 64) { o.near = true; emit({ type: 'near', x: h.x, y: h.y }); }
+          o.d2 = d2;
           if (o.k >= 2) { if (!o.hit) s.stats.owlsDodged++; s.owl = null; }
         }
       }
@@ -289,7 +323,7 @@ const SIM = (() => {
     hat: [
       { id: 'none', name: 'No hat', lvl: 1 }, { id: 'party', name: 'Party hat', lvl: 2 }, { id: 'flower', name: 'Sunflower', lvl: 4 },
       { id: 'beanie', name: 'Beanie', lvl: 6 }, { id: 'tophat', name: 'Top hat', lvl: 10 }, { id: 'crown', name: 'Holder crown', perk: 'crown' },
-      { id: 'bandana', name: 'Duelist bandana', perk: 'duel5' },
+      { id: 'bandana', name: 'Duelist bandana', perk: 'duel5' }, { id: 'laurel', name: 'Cup laurel', perk: 'cup' },
     ],
     fur: [
       { id: 'classic', name: 'Classic', lvl: 1 }, { id: 'cocoa', name: 'Cocoa', lvl: 3 }, { id: 'snow', name: 'Snow', lvl: 5 },

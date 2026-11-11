@@ -167,6 +167,8 @@ canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-
 .duels { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; width: 100%; }
 .duels li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 10px; padding: 6px 10px; font-size: 13px; text-align: left; }
 .duels li.won { border-color: var(--seed); }
+.board .nm.champ { color: var(--seed); }
+.modes .dot { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: #ec6a4f; color: #fff; font: 700 11px/18px var(--mono); }
 .duels li span { flex: 1 1 160px; }
 .duels li button { flex: none; }
 .challenge { width: 100%; box-sizing: border-box; background: #3d2b14; border: 1px solid var(--seed); border-radius: 12px; padding: 8px 12px; font-size: 14px; color: var(--cream); }
@@ -400,6 +402,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
             <span><b>L5</b> pebble storms</span><span><b>L6</b> owl swoops</span><span><b>L7</b> double swipes</span>
             <span><b>L8</b> puddles</span><span><b>L9+</b> faster still</span>
           </div>
+          <p>Every even level the <b>boss cat</b> swipes three times. Hop them all for a seed jackpot.</p>
         </div>
         <div class="box">
           <h3>Competitions</h3>
@@ -476,9 +479,9 @@ const SIM = (() => {
       ham: { x: 330, y: GROUND, vy: 0, ground: true, held: [], face: 1, inv: 0, step: 0, squash: 0, helmet: false, magnet: 0, stretch: 0, px: 330, py: GROUND },
       items: [], queue: [], wobble: [0, 0, 0, 0, 0], paw: null, owl: null, wind: null, puddles: [],
       nextSeed: 0.3, nextPebble: 5, nextPaw: 16, nextPower: 14, nextWind: 3, nextOwl: 3, nextPuddle: 2,
-      doublePaw: false, lastPawSide: 1,
+      doublePaw: false, lastPawSide: 1, boss: null, bosses: 0,
       goldTicks: goldTicks.slice().sort((a, b) => a - b), goldIdx: 0,
-      stats: { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0 },
+      stats: { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0, bossesBeaten: 0 },
       ev: [],
     };
     const cap = () => (s.ham.stretch > 0 ? CAP_BIG : CAP);
@@ -509,6 +512,7 @@ const SIM = (() => {
       if (h.inv > 0) return;
       if (h.helmet) { h.helmet = false; h.inv = 1; emit({ type: 'shield', x: h.x, y: h.y }); return; }
       s.hearts--; h.inv = 1.5; s.stats.hits++;
+      if (s.boss) s.boss.hurt = true;
       const spill = Math.ceil(h.held.length / 2);
       const lost = h.held.splice(h.held.length - spill, spill);
       lost.forEach((k, i) => {
@@ -535,7 +539,16 @@ const SIM = (() => {
       s.tick++; s.t = s.tick * DT;
       const d = s.t / LEVEL_SECS;
       const lv = 1 + Math.floor(d);
-      if (lv > s.level) { s.level = lv; emit({ type: 'level', level: lv }); }
+      if (lv > s.level) {
+        s.level = lv; emit({ type: 'level', level: lv });
+        // every second level the big cat attacks: three heavy swipes, then a jackpot if you dodge them all
+        if (lv % 2 === 0 && !s.boss) {
+          const k = s.bosses++, first = r() < .5 ? -1 : 1, sides = [first];
+          for (let i = 1; i < 3; i++) sides.push(r() < .65 ? -sides[i - 1] : sides[i - 1]);
+          s.boss = { sides, next: 0, wait: 2.2, hurt: false, warn: Math.max(.6, 1 - .05 * k), speed: Math.min(1400, 850 + 50 * k), gap: Math.max(.45, 1.1 - .08 * k) };
+          emit({ type: 'boss', level: lv });
+        }
+      }
       h.px = h.x; h.py = h.y;
       for (const it of s.items) { it.px = it.x; it.py = it.y; }
 
@@ -551,7 +564,7 @@ const SIM = (() => {
         if (s.t >= q.at) { spawn(q.kind, FLOWERS[q.i] + (r() - .5) * 30, 40, q.sub); s.queue.splice(i, 1); }
       }
       s.nextPebble -= DT;
-      if (s.nextPebble <= 0) {
+      if (s.nextPebble <= 0 && !s.boss) {
         const x = r();
         const count = s.level >= 5 ? (x < .3 ? 3 : x < .6 ? 2 : 1) : s.level >= 3 ? (x < .35 ? 2 : 1) : 1;
         const x0 = 150 + r() * (600 - (count - 1) * 85);
@@ -559,7 +572,24 @@ const SIM = (() => {
         s.nextPebble = Math.max(.55, (3 + r() * 1.6) / (1 + d * .45));
       }
       s.nextPaw -= DT;
-      if (s.nextPaw <= 0 && !s.paw) {
+      const b = s.boss;
+      if (b && !s.paw) {
+        if (b.wait > 0) b.wait -= DT;
+        else if (b.next < b.sides.length) {
+          const side = b.sides[b.next++];
+          s.paw = { side, warn: b.warn, speed: b.speed, x: 0, hit: false, big: true, reach: 64, pad: 44 };
+          b.wait = b.gap; emit({ type: 'warn', big: true });
+        } else {
+          s.boss = null; s.nextPaw = Math.max(s.nextPaw, 4);
+          if (!b.hurt) {
+            s.stats.bossesBeaten++;
+            for (let i = 0; i < 14; i++) drop('seed', i * .12, i);
+            drop('gold', .5, 1); drop('gold', .9, 3);
+            emit({ type: 'jackpot' });
+          } else emit({ type: 'bossFail' });
+        }
+      }
+      if (s.nextPaw <= 0 && !s.paw && !s.boss) {
         const side = s.doublePaw ? -s.lastPawSide : (r() < .5 ? -1 : 1);
         s.paw = { side, warn: Math.max(.75, 1.3 - .06 * d), speed: Math.min(1300, 700 + 60 * d), x: 0, hit: false };
         s.lastPawSide = side; emit({ type: 'warn' });
@@ -574,7 +604,7 @@ const SIM = (() => {
       }
       if (s.level >= 6) {
         s.nextOwl -= DT;
-        if (s.nextOwl <= 0 && !s.owl) {
+        if (s.nextOwl <= 0 && !s.owl && !s.boss) {
           const side = r() < .5 ? -1 : 1;
           s.owl = { side, warn: Math.max(.7, 1.1 - .03 * d), tx: h.x, x: side < 0 ? -60 : W + 60, y: 40, k: 0, dur: Math.max(.6, 1 - .03 * d), hit: false };
           s.nextOwl = Math.max(6, 14 - .8 * d) + r() * 4; emit({ type: 'owl' });
@@ -665,8 +695,12 @@ const SIM = (() => {
         else {
           const x0 = p.x;
           p.x += -p.side * p.speed * DT;
-          const lo = Math.min(x0, p.x) - 32, hi = Math.max(x0, p.x) + 32;
-          if (!p.hit && h.x > lo && h.x < hi && h.y > GROUND - 40) { p.hit = true; hurt('Swiped'); if (s.over) return; }
+          const pad = p.pad || 32, reach = p.reach || 40;
+          const lo = Math.min(x0, p.x) - pad, hi = Math.max(x0, p.x) + pad;
+          if (!p.hit && h.x > lo && h.x < hi) {
+            if (h.y > GROUND - reach) { p.hit = true; hurt(p.big ? 'Big swipe' : 'Swiped'); if (s.over) return; }
+            else if (!p.near && h.y > GROUND - reach - 30) { p.near = true; emit({ type: 'near', x: h.x, y: h.y }); }
+          }
           if (p.x < -160 || p.x > W + 160) { if (!p.hit) s.stats.pawsDodged++; s.paw = null; }
         }
       }
@@ -680,8 +714,11 @@ const SIM = (() => {
           const sx = o.side < 0 ? -60 : W + 60, ex = o.side < 0 ? W + 60 : -60;
           if (o.k <= 1) { o.x = sx + (o.tx - sx) * o.k; o.y = 40 + (GROUND - 34 - 40) * o.k; }
           else { const k2 = o.k - 1; o.x = o.tx + (ex - o.tx) * k2; o.y = GROUND - 34 - (GROUND - 34 - 40) * k2; }
-          const ox = o.x - h.x, oy = o.y - (h.y - R);
-          if (!o.hit && ox * ox + oy * oy < 36 * 36) { o.hit = true; hurt('Owl'); if (s.over) return; }
+          const ox = o.x - h.x, oy = o.y - (h.y - R), d2 = ox * ox + oy * oy;
+          if (!o.hit && d2 < 36 * 36) { o.hit = true; hurt('Owl'); if (s.over) return; }
+          // closest pass just went by without a hit
+          if (!o.hit && !o.near && o.d2 != null && d2 > o.d2 && o.d2 < 64 * 64) { o.near = true; emit({ type: 'near', x: h.x, y: h.y }); }
+          o.d2 = d2;
           if (o.k >= 2) { if (!o.hit) s.stats.owlsDodged++; s.owl = null; }
         }
       }
@@ -711,7 +748,7 @@ const SIM = (() => {
     hat: [
       { id: 'none', name: 'No hat', lvl: 1 }, { id: 'party', name: 'Party hat', lvl: 2 }, { id: 'flower', name: 'Sunflower', lvl: 4 },
       { id: 'beanie', name: 'Beanie', lvl: 6 }, { id: 'tophat', name: 'Top hat', lvl: 10 }, { id: 'crown', name: 'Holder crown', perk: 'crown' },
-      { id: 'bandana', name: 'Duelist bandana', perk: 'duel5' },
+      { id: 'bandana', name: 'Duelist bandana', perk: 'duel5' }, { id: 'laurel', name: 'Cup laurel', perk: 'cup' },
     ],
     fur: [
       { id: 'classic', name: 'Classic', lvl: 1 }, { id: 'cocoa', name: 'Cocoa', lvl: 3 }, { id: 'snow', name: 'Snow', lvl: 5 },
@@ -798,6 +835,10 @@ const SIM = (() => {
     shield: () => { tone(1200, .08, { type: 'triangle', vol: .06 }); tone(900, .15, { type: 'triangle', vol: .05, delay: .06 }); },
     power: () => [660, 880, 1320].forEach((f, i) => tone(f, .1, { type: 'sine', vol: .07, delay: i * .05 })),
     warn: () => { tone(760, .09, { vol: .05 }); tone(760, .09, { vol: .05, delay: .16 }); },
+    bigWarn: () => { tone(520, .14, { vol: .06 }); tone(520, .14, { vol: .06, delay: .2 }); tone(390, .2, { vol: .06, delay: .4 }); },
+    boss: () => { tone(110, .6, { type: 'sawtooth', vol: .07, slide: -40 }); noise(.5, .15, 300); },
+    jackpot: () => [523, 659, 784, 1047, 1319, 1568, 2093].forEach((f, i) => tone(f, .12, { type: 'triangle', vol: .06, delay: i * .06 })),
+    near: () => tone(700, .18, { type: 'sine', vol: .07, slide: 700 }),
     owl: () => { tone(420, .22, { type: 'sine', vol: .07, slide: -60 }); tone(380, .3, { type: 'sine', vol: .06, delay: .28, slide: -80 }); },
     wind: () => noise(1.2, .12, 400),
     level: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, .15, { vol: .05, delay: i * .08 })),
@@ -1037,6 +1078,7 @@ const SIM = (() => {
       if (player && v.id === player.address) li.className = 'me';
       const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
       const nm = document.createElement('span'); nm.className = 'nm';
+      if (v.cup) { const c = document.createElement('i'); c.textContent = '🏆 '; c.title = "Last week's Duel Cup champion"; nm.appendChild(c); nm.classList.add('champ'); }
       if (v.holder) { const c = document.createElement('i'); c.textContent = '♛ '; c.title = 'Squeek holder'; nm.appendChild(c); }
       nm.appendChild(document.createTextNode(v.nick || v.address));
       if (v.streak > 1) { const st = document.createElement('i'); st.textContent = ` 🔥${v.streak}`; st.title = `${v.streak}-day streak`; nm.appendChild(st); }
@@ -1076,9 +1118,10 @@ const SIM = (() => {
         if (!players.length) boardMsg('No runs saved yet. Sign in and be the first!'); else boardRows(players, 'bestScore', 'bestLevel');
         boardNote.textContent = 'Best verified Daily Burrow run per wallet.';
       } else if (boardTab === 'duels') {
-        const { players } = await api('/leaderboard?by=duels');
-        if (!players.length) boardMsg('No duels won yet. Start one from the Duel tab!'); else boardRows(players, 'wins', 'record');
-        boardNote.textContent = 'Most duel wins (wins–losses). Each win pays 150 XP.';
+        const d = await api('/leaderboard?by=duels');
+        if (!d.players.length) boardMsg('No duels won this week yet. Start one from the Duel tab!'); else boardRows(d.players, 'wins', 'record');
+        boardNote.textContent = `Weekly Duel Cup: most duel wins by Monday 00:00 UTC (${fmtLeft(d.endsAt).replace('resets', 'ends')}). The champion gets ${d.prizeXp} XP, the Cup laurel and a 🏆 on every board.` +
+          (d.champion ? ` Last week: ${d.champion.name} with ${d.champion.wins} win${d.champion.wins === 1 ? '' : 's'}.` : '');
       } else {
         renderBlocks(await api('/blocks'));
         boardNote.textContent = 'Every Squeekchain block goes to the best Daily Burrow score set while it was mined.';
@@ -1151,6 +1194,23 @@ const SIM = (() => {
     try { if (duelParam) duelLinked = (await api('/duels/' + duelParam)).duel; } catch (e) { duelLinked = null; }
     try { duels = session ? (await api('/duels')).duels : []; } catch (e) {}
     if (state === 'ready' || state === 'over') renderModeBody();
+    renderInbox();
+  }
+  // your turn (someone challenged you) or a result you haven't seen yet
+  let seenDuels = new Set((load('cheekpouch.seenDuels') || '').split(',').filter(Boolean));
+  const yourTurn = d => d.you === 'b' && canPlayDuel(d);
+  const freshResult = d => d.status === 'done' && d.b && !seenDuels.has(d.id);
+  function inboxCount() { return duels.filter(d => yourTurn(d) || freshResult(d)).length; }
+  function markDuelsSeen() {
+    if (!duels.some(freshResult)) return;
+    duels.forEach(d => { if (d.status === 'done') seenDuels.add(d.id); });
+    seenDuels = new Set([...seenDuels].slice(-60));
+    store('cheekpouch.seenDuels', [...seenDuels].join(','));
+  }
+  function renderInbox() {
+    const n = inboxCount(), tab = document.querySelector('.modes [data-mode="duel"]');
+    if (tab) tab.innerHTML = 'Duel' + (n ? ` <span class="dot" title="${n} duel${n === 1 ? '' : 's'} waiting for you">${n}</span>` : '');
+    document.title = (n ? `(${n}) ` : '') + 'Cheek Pouch';
   }
   const duelOpen = d => d.status !== 'done' && Date.now() / 1000 < d.expiresAt;
   const canPlayDuel = d => duelOpen(d) && (d.you ? !d[d.you].started : d.status === 'open');
@@ -1162,11 +1222,14 @@ const SIM = (() => {
       else if (d.winner === 'tie') line = `Tie with ${esc(nameOf(rv))}, ${me.score ?? 0}–${rv.score ?? 0}`;
       else { won = d.winner === me.id; line = `${won ? '<b>Won</b> vs' : 'Lost to'} ${esc(nameOf(rv))}, ${me.score ?? 0}–${rv.score ?? 0}`; }
       if (me.prize) line += ` · +${me.prize} XP`;
-    } else if (!me.started) line = rv ? `${esc(nameOf(rv))} ${rv.done ? `scored <b>${rv.score}</b>` : 'is in'}. Your go!` : 'Your duel. Play your go, then send the link.';
+    } else if (!me.started) line = !rv ? 'Your duel. Play your go, then send the link.'
+      : rv.done ? `${esc(nameOf(rv))} scored <b>${rv.score}</b>. Your go!`
+      : d.you === 'b' ? `${esc(nameOf(rv))} challenged you. Your go!` : `Rematch with ${esc(nameOf(rv))}. Your go first!`;
     else if (!me.done) line = "Your go didn't finish, so it counts as 0.";
     else line = rv ? `You scored <b>${me.score}</b>. Waiting for ${esc(nameOf(rv))}.` : `You scored <b>${me.score}</b>. Waiting for someone to open your link.`;
     const btns = (canPlayDuel(d) ? `<button type="button" class="small" data-duel-play="${d.id}">Play</button>` : '') +
-      (duelOpen(d) && !d.b ? `<button type="button" class="small" data-copy-duel="${d.id}">Copy link</button>` : '');
+      (duelOpen(d) && !d.b ? `<button type="button" class="small" data-copy-duel="${d.id}">Copy link</button>` : '') +
+      (d.status === 'done' && d.b ? `<button type="button" class="small" data-duel-rematch="${d.id}">Rematch</button>` : '');
     return `<li class="${won ? 'won' : ''}"><span>⚔ ${line}</span>${btns}</li>`;
   }
   function duelBodyHtml() {
@@ -1178,6 +1241,7 @@ const SIM = (() => {
       : '';
     if (!session) return invite + rules + '<p><b>Sign in</b> with your wallet to start or accept a duel.</p>';
     const list = duels.slice(0, 4).map(duelRow).join('');
+    setTimeout(() => { if (mode === 'duel' && !overlay.hidden) { markDuelsSeen(); renderInbox(); } });
     return invite + rules + (list ? `<ul class="duels">${list}</ul>` : '') +
       `<p class="fine">${L && !L.you && canPlayDuel(L) ? '' : '<b>Start run</b> opens a new duel: play your go, then send the link. '}Leaving mid-run uses up your try. Prize XP is paid for 3 duels a day; duels close after 48 hours.</p>`;
   }
@@ -1241,7 +1305,7 @@ const SIM = (() => {
         <span>🔥 Streak <b>${p.streak}</b> day${p.streak === 1 ? '' : 's'} (best ${p.bestStreak})</span>
         <span>⛏ Blocks won <b>${p.blocksWon}</b></span>
         <span>🏅 Daily podiums <b>${p.podiums}</b></span>
-        <span>⚔ Duels <b>${p.duelWins}–${p.duelLosses}</b></span>`;
+        <span>⚔ Duels <b>${p.duelWins}–${p.duelLosses}</b>${p.cups ? ` · 🏆 <b>${p.cups}</b> cup${p.cups === 1 ? '' : 's'}` : ''}</span>`;
       $('xpFill').style.width = Math.min(100, (p.xp - p.xpLevelStart) / span * 100) + '%';
     }
     const lvl = player ? player.hamsterLevel : 1, perks = player ? player.perks : {};
@@ -1249,7 +1313,7 @@ const SIM = (() => {
     slots.innerHTML = Object.keys(names).map(slot => `<div class="slot"><span class="k">${names[slot]}</span><div class="items">` +
       COSMETICS[slot].map(c => {
         const open = player ? SIM.unlocked(c, lvl, perks) : c.lvl === 1;
-        const need = c.perk ? { crown: 'Hold 1+ Squeek', gold: 'Hold 10+ Squeeks', shades: 'Stake 1+ Squeek', scarf: 'Own a level 2+ Squeek', duel1: 'Win a duel', duel5: 'Win 5 duels', duel15: 'Win 15 duels', duel30: 'Win 30 duels' }[c.perk] : `Hamster level ${c.lvl}`;
+        const need = c.perk ? { crown: 'Hold 1+ Squeek', gold: 'Hold 10+ Squeeks', shades: 'Stake 1+ Squeek', scarf: 'Own a level 2+ Squeek', duel1: 'Win a duel', duel5: 'Win 5 duels', duel15: 'Win 15 duels', duel30: 'Win 30 duels', cup: 'Win a weekly Duel Cup' }[c.perk] : `Hamster level ${c.lvl}`;
         return `<button type="button" data-slot="${slot}" data-item="${c.id}" aria-pressed="${equipNow()[slot] === c.id}" ${open && player ? '' : 'disabled'} title="${open ? c.name : 'Locked: ' + need}">${open ? '' : '🔒 '}${esc(c.name)}</button>`;
       }).join('') + '</div></div>').join('');
     if (!note.textContent || !player) note.textContent = player ? '' : 'Squeek holders unlock the crown, golden fur, shades and scarf.';
@@ -1268,7 +1332,7 @@ const SIM = (() => {
     await loadDaily();
     if (challenge) await loadGhost(challenge.day); else if (dailyInfo) loadGhost(dailyInfo.day);
     loadBoard(); loadMissions(); loadDuels();
-    setInterval(() => { if (state !== 'play') { loadBoard(); loadMissions(); } }, 60000);
+    setInterval(() => { if (state !== 'play') { loadBoard(); loadMissions(); loadDuels(); } }, 60000);
     if (state === 'ready') renderModeBody();
   }
 
@@ -1316,7 +1380,7 @@ const SIM = (() => {
 
   // ---------- start card ----------
   const overlay = $('overlay'), card = $('card');
-  function showCard(html) { card.innerHTML = html; overlay.hidden = false; }
+  function showCard(html) { card.innerHTML = html; overlay.hidden = false; renderInbox(); }
   const dailyReady = () => walletMode && !!dailyInfo;
   const challengeDay = () => (challenge && challenge.day !== todayUTC() ? challenge.day : null);
 
@@ -1339,6 +1403,7 @@ const SIM = (() => {
     const el = $('modeBody');
     if (el) el.innerHTML = modeBodyHtml();
     document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === mode));
+    renderInbox();
   }
   function modePicker() {
     return `<div class="modes" role="tablist" aria-label="Game mode">
@@ -1348,9 +1413,21 @@ const SIM = (() => {
       </div>
       <div class="modeBody" id="modeBody">${modeBodyHtml()}</div>`;
   }
+  async function rematch(id, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = 'Setting up…'; }
+    try {
+      const { duel } = await api('/duels', { method: 'POST', body: { rematch: id } });
+      duels = [duel, ...duels.filter(d => d.id !== duel.id)];
+      mode = 'duel'; duelSel = duel.id;
+      if (canPlayDuel(duel)) start();
+      else { toast(`Waiting for ${nameOf(rivalOf(duel))} to play your rematch.`, '#82cfe0'); renderModeBody(); }
+    } catch (e) { toast(e.message, '#ec6a4f'); if (btn) { btn.disabled = false; btn.textContent = 'Rematch'; } }
+  }
   card.addEventListener('click', e => {
     const m = e.target.closest('[data-mode]');
     if (m) { mode = m.dataset.mode; store('cheekpouch.mode', mode); renderModeBody(); return; }
+    const rm = e.target.closest('[data-duel-rematch]');
+    if (rm) { rematch(rm.dataset.duelRematch, rm); return; }
     const play = e.target.closest('[data-duel-play]');
     if (play) { duelSel = play.dataset.duelPlay; start(); return; }
     const cp = e.target.closest('[data-copy-duel]');
@@ -1424,7 +1501,7 @@ const SIM = (() => {
     game = SIM.create(opts);
     rec = []; lastBits = -1; acc = 0;
     parts = []; texts = []; toasts = []; banner = null; hint = null; firstBankAt = -1;
-    streak = { n: 0, show: 0 }; fx.shake = fx.freeze = 0; wasGround = true; wasFace = 1;
+    streak = { n: 0, show: 0 }; fx.shake = fx.freeze = fx.slow = fx.dance = 0; wasGround = true; wasFace = 1;
     $('hudMode').textContent = mode === 'daily' ? `Daily Burrow ${fmtDay(run.day)}${run.practice ? ' · practice' : ''}`
       : mode === 'duel' ? `Duel${run.rival ? ' vs ' + nameOf(run.rival) : ''}` : 'Free play';
     state = 'play';
@@ -1533,6 +1610,7 @@ const SIM = (() => {
         ${canChallenge ? `<a class="small" id="xBtn" target="_blank" rel="noopener" href="${xIntent()}">Post on X</a>
         <button type="button" class="small" id="copyBtn">Copy challenge link</button>` : ''}
         ${canCopyDuel ? `<button type="button" class="small" data-copy-duel="${dv.id}">Copy duel link</button>` : ''}
+        ${dv && dv.status === 'done' && dv.b ? `<button type="button" class="go go-sm" data-duel-rematch="${dv.id}">Rematch ${esc(nameOf(rivalOf(dv)))}</button>` : ''}
       </div>
       ${modePicker()}
       <button class="go" type="button" id="againBtn">Run again</button>`);
@@ -1614,8 +1692,13 @@ const SIM = (() => {
   const POWER_NAME = { helmet: 'Helmet', magnet: 'Magnet', stretch: 'Big cheeks' };
   const POWER_TIP = { helmet: 'Blocks the next hit', magnet: 'Pulls seeds in for 8 s', stretch: 'Hold 16 seeds for 15 s' };
   // visual-only feel: shake, a split-second freeze on hits, dust, sparkles and the catch streak
-  const fx = { shake: 0, freeze: 0 };
+  const fx = { shake: 0, freeze: 0, slow: 0, dance: 0 };
   let streak = { n: 0, show: 0 }, wasGround = true, wasFace = 1;
+  function confetti(x, y, n) {
+    if (reduceMotion) n = Math.min(n, 12);
+    const cols = ['#f2c14e', '#ec6a4f', '#82cfe0', '#9fd16f', '#b04a8f', '#fff1a8'];
+    for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - .5) * 520, vy: -180 - Math.random() * 320, life: 1.4 + Math.random() * .6, c: cols[i % cols.length], s: 4, conf: true, rot: Math.random() * 6, vr: (Math.random() - .5) * 14 });
+  }
   function dust(x, y, n) {
     if (reduceMotion) return;
     for (let i = 0; i < n; i++) parts.push({ x: x + (Math.random() - .5) * 30, y: y - 2, vx: (Math.random() - .5) * 90, vy: -20 - Math.random() * 40, life: .5, c: 'rgba(214,190,150,.7)', s: 3 + Math.random() * 3, float: true });
@@ -1638,6 +1721,11 @@ const SIM = (() => {
         if (firstBankAt < 0) firstBankAt = s.t;
         const big = e.n >= 8;
         float(BURROW_X + 30, GROUND - 124, `+${e.pts}`, big ? '#ffe066' : '#f2c14e', big ? 46 : 34);
+        if (big) {
+          confetti(BURROW_X + 40, GROUND - 40, e.n >= SIM.CAP ? 70 : 40);
+          fx.dance = .9;
+          if (!banner || banner.kind === 'bank') banner = { kind: 'bank', title: e.n >= SIM.CAP ? 'FULL POUCH!' : 'BANKED!', sub: `${e.n} seeds home · +${e.pts}`, life: 1.6 };
+        }
         const el = $('hudScore'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
         for (let i = 0; i < (big ? 30 : 16); i++) parts.push({ x: BURROW_X, y: GROUND - 6, vx: (Math.random() - .5) * 200, vy: -140 - Math.random() * 200, life: .9, c: i % 3 ? '#f2c14e' : '#fff1a8', s: 3, star: big && i % 2 === 0 });
       }
@@ -1646,7 +1734,15 @@ const SIM = (() => {
       else if (e.type === 'shield') { sfx.shield(); fx.shake = .15; sparkle(e.x, e.y - 44, 12, '#82cfe0'); float(e.x, e.y - 72, 'Helmet saved you!', '#82cfe0'); }
       else if (e.type === 'power') { sfx.power(); sparkle(e.x, e.y, 12, '#82cfe0'); float(e.x, e.y - 20, POWER_NAME[e.sub] + '!', '#82cfe0', 26); toast(`${POWER_NAME[e.sub]}: ${POWER_TIP[e.sub]}`, '#82cfe0'); }
       else if (e.type === 'level') { banner = { title: `Level ${e.level}`, sub: LEVEL_NEWS[e.level] || 'Faster still', life: 2.8 }; sfx.level(); }
-      else if (e.type === 'warn') sfx.warn();
+      else if (e.type === 'warn') e.big ? sfx.bigWarn() : sfx.warn();
+      else if (e.type === 'boss') {
+        banner = { kind: 'boss', title: `Level ${e.level}: Boss cat!`, sub: 'Hop 3 big swipes for a seed jackpot', life: 3 };
+        if (LEVEL_NEWS[e.level]) toast(`Level ${e.level}: ${LEVEL_NEWS[e.level]}`, '#f2c14e');
+        sfx.boss(); fx.shake = .25;
+      }
+      else if (e.type === 'jackpot') { banner = { kind: 'jackpot', title: 'JACKPOT!', sub: 'You beat the boss cat. Catch the shower!', life: 2.4 }; sfx.jackpot(); confetti(W / 2, 150, 80); }
+      else if (e.type === 'bossFail') toast('The boss cat got you. No jackpot this time.', '#ec6a4f');
+      else if (e.type === 'near') { fx.slow = .55; sfx.near(); sparkle(e.x, e.y - 30, 8, '#82cfe0'); float(e.x, e.y - 84, 'Close one!', '#82cfe0', 30); }
       else if (e.type === 'owl') sfx.owl();
       else if (e.type === 'wind') sfx.wind();
       else if (e.type === 'land') for (let k = 0; k < 6; k++) parts.push({ x: e.x, y: GROUND, vx: (Math.random() - .5) * 160, vy: -80 - Math.random() * 100, life: .5, c: '#9a8d80', s: 3 });
@@ -1662,7 +1758,7 @@ const SIM = (() => {
   // contextual coaching instead of a rules page
   function pickHint() {
     const s = game.s, n = s.ham.held.length;
-    if (s.paw && s.paw.warn > 0) hint = { msg: 'Cat paw! Press Space to hop over it', c: '#ec6a4f' };
+    if (s.paw && s.paw.warn > 0) hint = { msg: s.paw.big ? 'Big swipe! Hop early and high' : 'Cat paw! Press Space to hop over it', c: '#ec6a4f' };
     else if (s.owl && s.owl.warn > 0) hint = { msg: 'The owl is diving at the red ring: move away!', c: '#ec6a4f' };
     else if (n >= game.cap()) hint = { msg: 'Cheeks full! Run left to the burrow ←', c: '#f2c14e' };
     else if (!tutored && s.banks === 0 && n === 0) hint = { msg: 'Stand under the falling seeds to catch them', c: '#f6ead7' };
@@ -1673,7 +1769,9 @@ const SIM = (() => {
   function tickFx(dt) {
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
-      if (p.float) { p.vx *= .92; p.vy *= .92; p.s += dt * 6; } else p.vy += (p.star ? 300 : 900) * dt;
+      if (p.float) { p.vx *= .92; p.vy *= .92; p.s += dt * 6; }
+      else if (p.conf) { p.vy += 380 * dt; p.vx *= .985; p.rot += p.vr * dt; }
+      else p.vy += (p.star ? 300 : 900) * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
       if (p.life <= 0) parts.splice(i, 1);
     }
@@ -1682,6 +1780,7 @@ const SIM = (() => {
     if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
     streak.show = Math.max(0, streak.show - dt);
     fx.shake = Math.max(0, fx.shake - dt);
+    fx.slow = Math.max(0, fx.slow - dt); fx.dance = Math.max(0, fx.dance - dt);
     if (!reduceMotion) wheelAngle += ((live.ok ? live.rpm : 0) / 60) * Math.PI * 2 * dt;
   }
 
@@ -2023,6 +2122,13 @@ const SIM = (() => {
       c.fillStyle = '#4f8a3a'; c.beginPath(); c.ellipse(2, -44, 19, 13, 0, Math.PI, 0); c.fill();
       c.fillStyle = '#3d6544'; c.fillRect(-17, -47, 38, 5);
       c.fillStyle = '#f6ead7'; c.beginPath(); c.arc(2, -58, 4, 0, 7); c.fill();
+    } else if (eq.hat === 'laurel') {
+      c.fillStyle = '#9fd16f'; c.strokeStyle = '#4f8a3a'; c.lineWidth = 1;
+      for (const sd of [-1, 1]) for (let i = 0; i < 5; i++) {
+        const a = Math.PI * (sd < 0 ? 1.05 + i * .17 : -.05 - i * .17);
+        c.beginPath(); c.ellipse(2 + Math.cos(a) * 17, -44 + Math.sin(a) * 9, 6, 3, a + Math.PI / 2, 0, 7); c.fill(); c.stroke();
+      }
+      c.fillStyle = '#ffd23f'; c.beginPath(); c.arc(2, -55, 3, 0, 7); c.fill();
     } else if (eq.hat === 'bandana') {
       c.fillStyle = '#d8433b';
       c.beginPath(); c.ellipse(2, -45, 19, 5, 0, 0, 7); c.fill();
@@ -2054,8 +2160,10 @@ const SIM = (() => {
       }
     }
     if (!blink) {
-      ctx.save(); ctx.translate(x, y + bob);
-      if (moving && h.ground && !reduceMotion) ctx.rotate((keys.r ? 1 : -1) * .08);
+      const dance = !ghostMode && fx.dance > 0 && !reduceMotion;
+      ctx.save(); ctx.translate(x, y + bob - (dance ? Math.abs(Math.sin(fx.dance * 14)) * 12 : 0));
+      if (dance) ctx.rotate(Math.sin(fx.dance * 22) * .18);
+      else if (moving && h.ground && !reduceMotion) ctx.rotate((keys.r ? 1 : -1) * .08);
       ctx.scale(h.face * sq * (rising ? .9 : 1), (rising ? 1.12 : 1) / sq);
       if (ghostMode) ctx.globalAlpha = .35;
       drawHamsterShape(ctx, { held: h.held.length, step: h.step, gold: h.held.includes('gold'), big: h.stretch > 0, jig: moving && h.held.length && !reduceMotion ? Math.sin(h.step * 2) * 1.6 : 0 }, eq);
@@ -2081,17 +2189,18 @@ const SIM = (() => {
 
   function drawPaw(p) {
     if (!p) return;
+    const k = p.big ? 1.6 : 1;
     if (p.warn > 0) {
       const x = p.side < 0 ? 0 : W - 52;
       ctx.globalAlpha = .35 + .35 * Math.sin(performance.now() / 70);
-      ctx.fillStyle = '#ec6a4f'; ctx.fillRect(x, GROUND - 56, 52, 56);
+      ctx.fillStyle = '#ec6a4f'; ctx.fillRect(x, GROUND - 56 * k, 52, 56 * k);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#bdb6ad'; ctx.beginPath(); ctx.ellipse(p.side < 0 ? 4 : W - 4, GROUND - 18, 18, 16, 0, 0, 7); ctx.fill();
       ctx.fillStyle = '#f6ead7'; ctx.font = '26px "Lilita One", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('!', x + 26, GROUND - 74);
+      ctx.fillText(p.big ? '!!' : '!', x + 26, GROUND - 74 * k);
       return;
     }
-    ctx.save(); ctx.translate(p.x, GROUND - 18);
+    ctx.save(); ctx.translate(p.x, GROUND - 18 * k); ctx.scale(k, k);
     if (!reduceMotion) for (let k = 1; k <= 3; k++) { ctx.globalAlpha = .22 / k; ctx.fillStyle = '#f6ead7'; ctx.beginPath(); ctx.ellipse(p.side * k * 30, 0, 26, 20 - k * 4, 0, 0, 7); ctx.fill(); }
     ctx.globalAlpha = 1;
     ctx.scale(p.side, 1); // the arm trails back toward where it came from; the claws lead
@@ -2156,6 +2265,7 @@ const SIM = (() => {
     drawOwl(s.owl);
     for (const p of parts) {
       ctx.globalAlpha = Math.max(0, Math.min(1, p.life * 2)); ctx.fillStyle = p.c; ctx.beginPath();
+      if (p.conf) { ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillRect(-p.s, -p.s * .5, p.s * 2, p.s); ctx.restore(); continue; }
       if (p.star) { for (let k = 0; k < 8; k++) { const r = k % 2 ? p.s * .4 : p.s * 1.4, a = k * Math.PI / 4; k ? ctx.lineTo(p.x + Math.cos(a) * r, p.y + Math.sin(a) * r) : ctx.moveTo(p.x + r, p.y); } ctx.closePath(); }
       else ctx.arc(p.x, p.y, p.s, 0, 7);
       ctx.fill();
@@ -2192,10 +2302,21 @@ const SIM = (() => {
       const w = ctx.measureText(label).width + 20;
       pillText(W - 12 - w, 78, label, s.score >= gs.score ? '#1d2a12' : '#f6ead7', s.score >= gs.score ? 'rgba(159,209,111,.95)' : 'rgba(130,207,224,.35)');
     }
+    if (s.boss && state === 'play') {
+      const pulse = reduceMotion ? .5 : .5 + .5 * Math.sin(performance.now() / 160);
+      for (const side of [0, 1]) {
+        const g = ctx.createLinearGradient(side ? W : 0, 0, side ? W - 90 : 90, 0);
+        g.addColorStop(0, `rgba(236,90,60,${.18 + .14 * pulse})`); g.addColorStop(1, 'rgba(236,90,60,0)');
+        ctx.fillStyle = g; ctx.fillRect(side ? W - 90 : 0, 0, 90, GROUND);
+      }
+      const left = s.boss.sides.length - s.boss.next + (s.paw && s.paw.big ? 1 : 0);
+      pillText(12, 104, `Boss cat: ${left} swipe${left === 1 ? '' : 's'} left${s.boss.hurt ? ' · jackpot lost' : ''}`, '#f6ead7', 'rgba(236,90,60,.9)');
+    }
     if (banner && state === 'play') {
       ctx.globalAlpha = Math.min(1, banner.life * 1.5);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '54px "Lilita One", sans-serif';
+      const pop = reduceMotion ? 1 : 1 + Math.max(0, banner.life - (banner.kind === 'bank' ? 1.4 : 2.6)) * 1.5;
+      ctx.font = `${Math.round(54 * pop)}px "Lilita One", sans-serif`;
       ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(20,13,9,.9)'; ctx.strokeText(banner.title, W / 2, 168);
       ctx.fillStyle = '#f2c14e'; ctx.fillText(banner.title, W / 2, 168);
       pillText(W / 2, 212, banner.sub, '#f6ead7', 'rgba(236,90,60,.92)', '600 15px "JetBrains Mono", monospace', 'center');
@@ -2223,7 +2344,7 @@ const SIM = (() => {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (state === 'play') {
       if (fx.freeze > 0) fx.freeze -= dt;
-      else { acc += dt; while (acc >= DT && state === 'play') { tickOnce(); acc -= DT; } }
+      else { acc += dt * (fx.slow > 0 ? .35 : 1); while (acc >= DT && state === 'play') { tickOnce(); acc -= DT; } }
       alpha = Math.min(1, acc / DT);
     } else alpha = 1;
     if (state !== 'paused') tickFx(dt);

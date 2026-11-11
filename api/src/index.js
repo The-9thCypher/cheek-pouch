@@ -45,6 +45,8 @@ const DUEL_GRACE = 3600;              // a run started before expiry may still f
 const DUEL_PLAY_XP = 25, DUEL_WIN_XP = 150, DUEL_TIE_XP = 75;
 const DUEL_PRIZES_PER_DAY = 3;        // prize-paying duels per player per UTC day
 const MAX_OPEN_DUELS = 5;             // unaccepted duels per challenger
+const MAX_LIVE_DUELS = 12;            // unfinished duels per challenger, rematches included
+const CUP_XP = 500;                   // weekly Duel Cup champion
 
 const nowS = () => Math.floor(Date.now() / 1000);
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -114,7 +116,7 @@ async function dailyInfo(env, day) {
 const defaultEquip = { hat: 'none', fur: 'classic', extra: 'none' };
 function perksOf(p) {
   const w = p.duel_wins || 0;
-  return { crown: p.squeeks >= 1, shades: p.staked >= 1, scarf: p.top_level >= 2, gold: p.squeeks >= 10, duel1: w >= 1, duel5: w >= 5, duel15: w >= 15, duel30: w >= 30 };
+  return { crown: p.squeeks >= 1, shades: p.staked >= 1, scarf: p.top_level >= 2, gold: p.squeeks >= 10, duel1: w >= 1, duel5: w >= 5, duel15: w >= 15, duel30: w >= 30, cup: (p.cups || 0) >= 1 };
 }
 function equipOf(p) {
   let e = {};
@@ -149,7 +151,7 @@ async function publicPlayer(env, p) {
     perks: perksOf(p),
     xp: p.xp || 0, hamsterLevel: lvl, xpLevelStart: SIM.xpForLevel(lvl), xpNextLevel: SIM.xpForLevel(lvl + 1),
     streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, bestStreak: p.best_streak,
-    equip: equipOf(p), blocksWon: ex.blocksWon, podiums: ex.podiums, duelWins: p.duel_wins || 0, duelLosses: p.duel_losses || 0,
+    equip: equipOf(p), blocksWon: ex.blocksWon, podiums: ex.podiums, duelWins: p.duel_wins || 0, duelLosses: p.duel_losses || 0, cups: p.cups || 0,
   };
 }
 const getPlayer = (env, address) => env.DB.prepare('SELECT * FROM players WHERE address = ?').bind(address).first();
@@ -440,12 +442,25 @@ const getDuel = (env, id) => env.DB.prepare('SELECT * FROM duels WHERE id = ?').
 const dayStartS = () => Math.floor(Date.parse(today() + 'T00:00:00Z') / 1000);
 
 async function createDuel(req, env, address) {
+  const b = await body(req);
+  let rival = null;
+  if (b.rematch) {
+    const old = await getDuel(env, String(b.rematch));
+    if (!old || !old.resolved_at || !old.b || (old.a !== address && old.b !== address)) return fail(req, 400, 'no_rematch', 'That duel cannot be rematched.');
+    rival = old.a === address ? old.b : old.a;
+    // one unfinished duel per pair: hand back the one already waiting
+    const waiting = await env.DB.prepare('SELECT * FROM duels WHERE resolved_at IS NULL AND expires_at > ? AND ((a = ? AND b = ?) OR (a = ? AND b = ?)) ORDER BY created_at DESC LIMIT 1')
+      .bind(nowS(), address, rival, rival, address).first();
+    if (waiting) return json(req, { duel: await duelView(env, waiting, address) });
+  }
+  const live = await env.DB.prepare('SELECT COUNT(*) AS n FROM duels WHERE a = ? AND resolved_at IS NULL AND expires_at > ?').bind(address, nowS()).first();
+  if (live.n >= MAX_LIVE_DUELS) return fail(req, 429, 'too_many_duels', 'You have a lot of duels going. Finish some first.');
   const open = await env.DB.prepare('SELECT COUNT(*) AS n FROM duels WHERE a = ? AND b IS NULL AND resolved_at IS NULL AND expires_at > ?').bind(address, nowS()).first();
-  if (open.n >= MAX_OPEN_DUELS) return fail(req, 429, 'too_many_duels', `You already have ${MAX_OPEN_DUELS} duels nobody has accepted. Share those first.`);
+  if (!rival && open.n >= MAX_OPEN_DUELS) return fail(req, 429, 'too_many_duels', `You already have ${MAX_OPEN_DUELS} duels nobody has accepted. Share those first.`);
   const day = today(), info = await dailyInfo(env, day);
   const id = randomHex(5), seed = crypto.getRandomValues(new Uint32Array(1))[0];
-  await env.DB.prepare('INSERT INTO duels (id, seed, day, work, a, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, seed, day, info.work, address, nowS(), nowS() + DUEL_TTL).run();
+  await env.DB.prepare('INSERT INTO duels (id, seed, day, work, a, b, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, seed, day, info.work, address, rival, nowS(), nowS() + DUEL_TTL).run();
   return json(req, { duel: await duelView(env, await getDuel(env, id), address) });
 }
 
@@ -499,6 +514,29 @@ async function duelView(env, d, me) {
   };
 }
 
+// ---------- weekly Duel Cup ----------
+const weekStartS = day => Math.floor(Date.parse(weekStart(day) + 'T00:00:00Z') / 1000);
+async function cupStandings(env, from, to, limit) {
+  return (await env.DB.prepare(
+    `SELECT d.winner AS address, COUNT(*) AS wins, MAX(d.resolved_at) AS last, p.nick, p.squeeks, p.streak, p.last_play_day, p.xp, p.duel_wins, p.duel_losses
+     FROM duels d JOIN players p ON p.address = d.winner
+     WHERE d.resolved_at >= ? AND d.resolved_at < ? AND d.winner IS NOT NULL AND d.winner != 'tie'
+     GROUP BY d.winner ORDER BY wins DESC, last ASC LIMIT ?`
+  ).bind(from, to, limit).all()).results;
+}
+// last week's champion, settled (and paid) the first time anyone asks after Monday 00:00 UTC
+async function cupChampion(env) {
+  const week = addDays(weekStart(today()), -7);
+  let row = await env.DB.prepare('SELECT address, wins FROM duel_cups WHERE week = ?').bind(week).first();
+  if (!row) {
+    const [top] = await cupStandings(env, weekStartS(week), weekStartS(today()), 1);
+    const put = await env.DB.prepare('INSERT OR IGNORE INTO duel_cups (week, address, wins) VALUES (?, ?, ?)').bind(week, top ? top.address : null, top ? top.wins : 0).run();
+    if (put.meta.changes && top) await env.DB.prepare('UPDATE players SET cups = cups + 1, xp = xp + ? WHERE address = ?').bind(CUP_XP, top.address).run();
+    row = { address: top ? top.address : null, wins: top ? top.wins : 0 };
+  }
+  return { week, ...row };
+}
+
 async function duelGet(req, env, address, id) {
   const d = await resolveDuel(env, await getDuel(env, id));
   if (!d) return fail(req, 404, 'no_duel', 'That duel was not found.');
@@ -535,26 +573,31 @@ async function startDuelRun(req, env, address, duelId) {
 }
 
 // ---------- boards ----------
-const boardRow = (p, i) => ({ rank: i + 1, id: p.address, address: short(p.address), nick: p.nick || null, holder: p.squeeks > 0, streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, hamsterLevel: SIM.levelForXp(p.xp || 0) });
+const boardRow = (p, i, champ) => ({ rank: i + 1, id: p.address, cup: !!champ && p.address === champ, address: short(p.address), nick: p.nick || null, holder: p.squeeks > 0, streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, hamsterLevel: SIM.levelForXp(p.xp || 0) });
 
 async function leaderboard(req, env) {
+  const champ = await cupChampion(env);
   if (new URL(req.url).searchParams.get('by') === 'duels') {
-    const { results } = await env.DB.prepare(
-      'SELECT address, nick, squeeks, streak, last_play_day, xp, duel_wins, duel_losses FROM players WHERE duel_wins > 0 ORDER BY duel_wins DESC, duel_losses ASC LIMIT 20'
-    ).all();
-    return json(req, { players: results.map((p, i) => ({ ...boardRow(p, i), wins: p.duel_wins, record: `${p.duel_wins}–${p.duel_losses}` })) });
+    const rows = await cupStandings(env, weekStartS(today()), nowS() + 60, 20);
+    let lastName = null;
+    if (champ.address) { const c = await getPlayer(env, champ.address); lastName = (c && c.nick) || short(champ.address); }
+    return json(req, {
+      players: rows.map((p, i) => ({ ...boardRow(p, i, champ.address), wins: p.wins, record: `${p.duel_wins}–${p.duel_losses}` })),
+      champion: champ.address ? { id: champ.address, name: lastName, wins: champ.wins } : null,
+      endsAt: addDays(weekStart(today()), 7) + 'T00:00:00Z', prizeXp: CUP_XP,
+    });
   }
   const { results } = await env.DB.prepare(
     'SELECT address, nick, best_score, best_level, squeeks, streak, last_play_day, xp FROM players WHERE best_score > 0 ORDER BY best_score DESC, last_run_at ASC LIMIT 20'
   ).all();
-  return json(req, { players: results.map((p, i) => ({ ...boardRow(p, i), bestScore: p.best_score, bestLevel: p.best_level })) });
+  return json(req, { players: results.map((p, i) => ({ ...boardRow(p, i, champ.address), bestScore: p.best_score, bestLevel: p.best_level })) });
 }
 
 async function daily(req, env, address) {
   const url = new URL(req.url);
   const day = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('day') || '') ? url.searchParams.get('day') : today();
   if (day > today() || day < addDays(today(), -7)) return fail(req, 400, 'bad_day', 'Daily runs are kept for 7 days.');
-  const info = await dailyInfo(env, day);
+  const info = await dailyInfo(env, day), champ = await cupChampion(env);
   const { results } = await env.DB.prepare(
     `SELECT d.address, d.score, d.level, p.nick, p.squeeks, p.streak, p.last_play_day, p.xp FROM daily_best d JOIN players p ON p.address = d.address
      WHERE d.day = ? ORDER BY d.score DESC, d.at ASC LIMIT 20`
@@ -564,7 +607,7 @@ async function daily(req, env, address) {
     const m = await env.DB.prepare('SELECT score FROM daily_best WHERE day = ? AND address = ?').bind(day, address).first();
     if (m) mine = { score: m.score, rank: (await env.DB.prepare('SELECT COUNT(*) + 1 AS rank FROM daily_best WHERE day = ? AND score > ?').bind(day, m.score).first()).rank };
   }
-  return json(req, { ...info, top: results.map((p, i) => ({ ...boardRow(p, i), score: p.score, level: p.level })), me: mine });
+  return json(req, { ...info, top: results.map((p, i) => ({ ...boardRow(p, i, champ.address), score: p.score, level: p.level })), me: mine });
 }
 
 async function ghost(req, env) {

@@ -15,7 +15,8 @@ The game reads Squeekchain's public API every 8 seconds, straight from the brows
 - **Real wheel, real pace (Free play).** While Squeektoshi is running, the sky turns to day, seeds fall faster and every bank pays ×2. While he rests, the game plays at night at ×1.
 - **Golden seeds.** In Free play, every increase in logged wheel work drops golden seeds (+20 each) and each completed block drops a golden shower. In the Daily Burrow, yesterday's real wheel work sets how many golden seeds fall.
 - **Daily Burrow.** The same run for everyone each day. The server replays each run's key presses with the same game code to verify it, so only verified runs reach the boards. Race the leader's ghost, and send challenge links.
-- **Duels.** Send a friend a link: you both get the same secret seed and one try, replay-verified. The winner takes 150 XP, and duel wins unlock a medal, bandana, champion belt and ember fur.
+- **Duels.** Send a friend a link: you both get the same secret seed and one try, replay-verified. The winner takes 150 XP, and duel wins unlock a medal, bandana, champion belt and ember fur. One-tap rematches, a badge when it's your turn, and a weekly Duel Cup (500 XP, the Cup laurel and a 🏆 on every board).
+- **Boss cat.** Every second level a big cat swipes three times. Dodge all three for a seed jackpot.
 - **Block Champion.** Each Squeekchain block goes to the best Daily Burrow score set while it was being mined.
 - **Squeek perks.** A signed-in wallet's real holdings unlock wardrobe items: a crown (hold 1+ Squeek), staker shades (stake 1+), a merge scarf (own a level 2+ Squeek) and golden fur (hold 10+). Outfits never change the score.
 - **Live strip.** Wheel RPM and speed, work logged, the settled round, and progress toward the next block.
