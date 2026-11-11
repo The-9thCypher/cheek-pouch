@@ -794,7 +794,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       <dl class="tally">
         <dt>Reached</dt><dd>level ${level} in ${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}</dd>
         <dt>Banked in ${banks} trip${banks === 1 ? '' : 's'}</dt><dd>${score}</dd>
-        ${leftover ? `<dt>Still in cheeks (lost)</dt><dd>${leftover} seeds</dd>` : ''}
+        ${leftover ? `<dt>Still in cheeks (lost)</dt><dd>${leftover} seed${leftover === 1 ? '' : 's'}</dd>` : ''}
         <dt>Bonus bet</dt><dd>${betTxt}</dd>
         <dt class="total">Final score</dt><dd class="total">${final}</dd>
       </dl>
@@ -963,7 +963,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     ctx.fillStyle = '#4a3627'; ctx.fillRect(0, GROUND + 8, W, H - GROUND);
     ctx.fillStyle = '#33251b'; for (const s of speck) { ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 7); ctx.fill(); }
     drawBurrow();
-    drawWheel(744, 350, 34);
+    drawWheel(740, 344, 46);
     // real hamster status, always on screen
     const st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
       : live.running ? ['Real hamster RUNNING · banks ×2', '#1d2a12', 'rgba(159,209,111,.95)']
@@ -1000,8 +1000,43 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); ctx.lineTo(Math.cos(a) * (r - 8), Math.sin(a) * (r - 8)); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
     ctx.restore();
+    drawSqueektoshi(x, y + r - 3, run);
     ctx.fillStyle = run ? '#1d3a42' : '#b7c7cd'; ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(live.ok ? `${live.rpm.toFixed(1)} RPM` : 'OFFLINE', x, y - r - 12);
+    ctx.fillText(!live.ok ? 'OFFLINE' : run ? `${live.rpm.toFixed(1)} RPM` : 'ASLEEP', x, y - r - 12);
+  }
+
+  // the real hamster inside the wheel: running when the feed says so, curled up asleep otherwise
+  function drawSqueektoshi(x, y, run) {
+    const now = performance.now() / 1000;
+    ctx.save(); ctx.translate(x, y); ctx.scale(.6, .6);
+    if (run) {
+      const step = reduceMotion ? 0 : now * 18;
+      ctx.fillStyle = '#f0a7a0';
+      ctx.beginPath(); ctx.ellipse(-10 + Math.sin(step) * 6, -2, 7, 3.5, 0, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(10 - Math.sin(step) * 6, -2, 7, 3.5, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#e39a5d'; ctx.beginPath(); ctx.ellipse(0, -22 + Math.abs(Math.sin(step)) * -2, 28, 20, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(10, -40, 7, 0, 7); ctx.fill();
+      ctx.fillStyle = '#1b120c'; ctx.beginPath(); ctx.arc(19, -30, 3.4, 0, 7); ctx.fill();
+      ctx.fillStyle = '#e46f7a'; ctx.beginPath(); ctx.arc(28, -25, 3, 0, 7); ctx.fill();
+    } else {
+      const breathe = reduceMotion ? 0 : Math.sin(now * 2) * 1.5;
+      ctx.fillStyle = '#e39a5d'; ctx.beginPath(); ctx.ellipse(0, -16, 27 + breathe, 17 + breathe, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#c97b42'; ctx.beginPath(); ctx.arc(14, -30, 6, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#1b120c'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(16, -18, 4, .2, Math.PI - .2); ctx.stroke();
+      ctx.restore();
+      // drifting z's
+      ctx.fillStyle = '#b7c7cd'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      for (let k = 0; k < 3; k++) {
+        const ph = reduceMotion ? k / 3 : (now * .5 + k / 3) % 1;
+        ctx.globalAlpha = 1 - ph;
+        ctx.font = `600 ${9 + ph * 6}px "JetBrains Mono", monospace`;
+        ctx.fillText('z', x + 12 + ph * 16, y - 20 - ph * 24);
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+    ctx.restore();
   }
 
   function drawShadow(it) {
