@@ -40,6 +40,11 @@ const WEEKLY_POOL = [
   { id: 'owl10', title: 'Dodge 10 owl swoops', metric: 'owlsDodged', goal: 10 },
 ];
 const DAILY_XP = 100, WEEKLY_XP = 400;
+const DUEL_TTL = 48 * 3600;           // seconds to accept and play a duel
+const DUEL_GRACE = 3600;              // a run started before expiry may still finish
+const DUEL_PLAY_XP = 25, DUEL_WIN_XP = 150, DUEL_TIE_XP = 75;
+const DUEL_PRIZES_PER_DAY = 3;        // prize-paying duels per player per UTC day
+const MAX_OPEN_DUELS = 5;             // unaccepted duels per challenger
 
 const nowS = () => Math.floor(Date.now() / 1000);
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -107,7 +112,10 @@ async function dailyInfo(env, day) {
 
 // ---------- players ----------
 const defaultEquip = { hat: 'none', fur: 'classic', extra: 'none' };
-function perksOf(p) { return { crown: p.squeeks >= 1, shades: p.staked >= 1, scarf: p.top_level >= 2, gold: p.squeeks >= 10 }; }
+function perksOf(p) {
+  const w = p.duel_wins || 0;
+  return { crown: p.squeeks >= 1, shades: p.staked >= 1, scarf: p.top_level >= 2, gold: p.squeeks >= 10, duel1: w >= 1, duel5: w >= 5, duel15: w >= 15, duel30: w >= 30 };
+}
 function equipOf(p) {
   let e = {};
   try { e = JSON.parse(p.equip || '{}') || {}; } catch { e = {}; }
@@ -141,7 +149,7 @@ async function publicPlayer(env, p) {
     perks: perksOf(p),
     xp: p.xp || 0, hamsterLevel: lvl, xpLevelStart: SIM.xpForLevel(lvl), xpNextLevel: SIM.xpForLevel(lvl + 1),
     streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, bestStreak: p.best_streak,
-    equip: equipOf(p), blocksWon: ex.blocksWon, podiums: ex.podiums,
+    equip: equipOf(p), blocksWon: ex.blocksWon, podiums: ex.podiums, duelWins: p.duel_wins || 0, duelLosses: p.duel_losses || 0,
   };
 }
 const getPlayer = (env, address) => env.DB.prepare('SELECT * FROM players WHERE address = ?').bind(address).first();
@@ -297,9 +305,10 @@ async function applyMissions(env, address, day, metrics) {
 // ---------- runs ----------
 async function startRun(req, env, address) {
   const b = await body(req);
-  const mode = b.mode === 'daily' ? 'daily' : 'classic';
+  const mode = b.mode === 'daily' || b.mode === 'duel' ? b.mode : 'classic';
   const recent = await env.DB.prepare('SELECT COUNT(*) AS n FROM runs WHERE address = ? AND started_at > ?').bind(address, nowS() - 60).first();
   if (recent.n >= MAX_RUNS_PER_MINUTE) return fail(req, 429, 'slow_down', 'Too many runs started in a minute. Take a breath and try again.');
+  if (mode === 'duel') return startDuelRun(req, env, address, String(b.duel || ''));
   const id = randomHex(16), day = today();
   // the daily plan is fixed when the run starts, so the replay uses exactly what the player saw
   const info = mode === 'daily' ? await dailyInfo(env, day) : null;
@@ -338,15 +347,17 @@ async function finishRun(req, env, address, id) {
   // it counts as a run for streaks and run-count missions, but only verified Daily Burrow runs
   // reach the boards, Block Champion and XP.
   const verified = run.mode === 'daily';
+  const duel = run.mode === 'duel' ? await getDuel(env, run.duel) : null;
+  const replayed = verified || !!duel;
   let stats = { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0 }, ticks = 0, inputs = null;
-  if (verified) {
+  if (replayed) {
     ticks = Math.floor(Number(b.ticks));
     inputs = b.inputs;
     if (!Number.isInteger(ticks) || ticks < 1 || !validInputs(inputs, ticks)) return reject('That run could not be read, so it was not saved.');
     if (ticks / SIM.HZ > secs * 1.1 + 5) return reject('That run was faster than real time, so it was not saved.');
     const work = run.work != null ? run.work : (await dailyInfo(env, run.day)).work;
     const plan = SIM.goldPlan(run.day, work);
-    const s = SIM.replay({ seed: SIM.daySeed(run.day), goldTicks: plan.ticks, mult: 1 }, inputs, ticks);
+    const s = SIM.replay({ seed: duel ? duel.seed : SIM.daySeed(run.day), goldTicks: plan.ticks, mult: 1 }, inputs, ticks);
     if (!s.over || s.tick !== ticks || s.score !== score || s.level !== level) return reject('That run did not replay the same way, so it was not saved.');
     stats = s.stats;
   }
@@ -367,13 +378,23 @@ async function finishRun(req, env, address, id) {
     block = { block: st.block, lead, took: lead && (!cur || cur.address !== address), best: lead ? score : cur.score };
   }
 
+  // a duel result is saved before XP, so the second finisher settles the duel and both prizes at once
+  let duelRes = null;
+  if (duel) {
+    const side = duel.a === address ? 'a' : 'b';
+    await env.DB.prepare(`UPDATE duels SET ${side}_score = ?, ${side}_level = ?, ${side}_ticks = ?, ${side}_inputs = ? WHERE id = ? AND ${side}_run = ? AND ${side}_score IS NULL`)
+      .bind(score, level, ticks, JSON.stringify(inputs), duel.id, id).run();
+    duelRes = await duelView(env, await resolveDuel(env, await getDuel(env, duel.id)), address);
+  }
+  const duelPrize = duelRes ? duelRes[duelRes.you].prize : 0; // already added to xp by resolveDuel
+
   const metrics = {
-    ...stats, score: verified ? score : 0, level: verified ? level : 0, runs: 1, daily: verified ? 1 : 0, newDay: newDay ? 1 : 0,
+    ...stats, score: replayed ? score : 0, level: replayed ? level : 0, runs: 1, daily: verified ? 1 : 0, newDay: newDay ? 1 : 0,
     awake: st && st.running ? 1 : 0, blockLead: block && block.took ? 1 : 0,
   };
   const ms = await applyMissions(env, address, day, metrics);
   const streakXp = newDay ? Math.min(10 * streak, 100) : 0;
-  const xpGained = (verified ? score + 25 : 0) + streakXp + ms.xp;
+  const xpGained = (verified ? score + 25 : duel ? DUEL_PLAY_XP : 0) + streakXp + ms.xp + duelPrize;
   const lvlBefore = SIM.levelForXp(p.xp || 0), lvlAfter = SIM.levelForXp((p.xp || 0) + xpGained);
   const isBest = verified && score > p.best_score;
   const bestScore = verified ? score : 0; // Free play never sets the all-time best
@@ -387,7 +408,7 @@ async function finishRun(req, env, address, id) {
          best_secs  = CASE WHEN ? > best_score THEN ? ELSE best_secs END,
          best_score = MAX(best_score, ?)
        WHERE address = ?`
-    ).bind(bestScore, nowS(), xpGained, streak, streak, day, bestScore, level, bestScore, secs, bestScore, address),
+    ).bind(bestScore, nowS(), xpGained - duelPrize, streak, streak, day, bestScore, level, bestScore, secs, bestScore, address),
   ];
   let daily = null;
   if (verified) {
@@ -410,13 +431,119 @@ async function finishRun(req, env, address, id) {
   return json(req, {
     player: await publicPlayer(env, fresh), isBest, rank: rank.rank, daily, block,
     xpGained, streakXp, levelUp: lvlAfter > lvlBefore ? lvlAfter : null, levelFrom: lvlBefore, missionsDone: ms.completed, streak, verified,
+    duel: duelRes,
   });
+}
+
+// ---------- duels ----------
+const getDuel = (env, id) => env.DB.prepare('SELECT * FROM duels WHERE id = ?').bind(id).first();
+const dayStartS = () => Math.floor(Date.parse(today() + 'T00:00:00Z') / 1000);
+
+async function createDuel(req, env, address) {
+  const open = await env.DB.prepare('SELECT COUNT(*) AS n FROM duels WHERE a = ? AND b IS NULL AND resolved_at IS NULL AND expires_at > ?').bind(address, nowS()).first();
+  if (open.n >= MAX_OPEN_DUELS) return fail(req, 429, 'too_many_duels', `You already have ${MAX_OPEN_DUELS} duels nobody has accepted. Share those first.`);
+  const day = today(), info = await dailyInfo(env, day);
+  const id = randomHex(5), seed = crypto.getRandomValues(new Uint32Array(1))[0];
+  await env.DB.prepare('INSERT INTO duels (id, seed, day, work, a, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, seed, day, info.work, address, nowS(), nowS() + DUEL_TTL).run();
+  return json(req, { duel: await duelView(env, await getDuel(env, id), address) });
+}
+
+// settles a duel once both have played, or when it runs out; pays prizes exactly once
+async function resolveDuel(env, d) {
+  if (!d || d.resolved_at) return d;
+  const now = nowS(), doneA = d.a_score != null, doneB = d.b_score != null;
+  if (!(doneA && doneB) && now < d.expires_at + DUEL_GRACE) return d;
+  const sa = d.a_score || 0, sb = d.b_score || 0;
+  const winner = !d.b ? null : sa === sb ? 'tie' : sa > sb ? d.a : d.b;
+  const claim = await env.DB.prepare('UPDATE duels SET resolved_at = ?, winner = ? WHERE id = ? AND resolved_at IS NULL').bind(now, winner, d.id).run();
+  if (!claim.meta.changes) return getDuel(env, d.id);
+  if (winner && (doneA || doneB)) {
+    const capped = async addr => (await env.DB.prepare(
+      'SELECT COUNT(*) AS n FROM duels WHERE resolved_at >= ? AND ((a = ? AND prize_a > 0) OR (b = ? AND prize_b > 0))'
+    ).bind(dayStartS(), addr, addr).first()).n >= DUEL_PRIZES_PER_DAY;
+    let pa = 0, pb = 0;
+    const writes = [];
+    if (winner === 'tie') {
+      if (doneA && !(await capped(d.a))) pa = DUEL_TIE_XP;
+      if (doneB && !(await capped(d.b))) pb = DUEL_TIE_XP;
+    } else {
+      const loser = winner === d.a ? d.b : d.a, xp = (await capped(winner)) ? 0 : DUEL_WIN_XP;
+      if (winner === d.a) pa = xp; else pb = xp;
+      writes.push(env.DB.prepare('UPDATE players SET duel_wins = duel_wins + 1 WHERE address = ?').bind(winner));
+      writes.push(env.DB.prepare('UPDATE players SET duel_losses = duel_losses + 1 WHERE address = ?').bind(loser));
+    }
+    writes.push(env.DB.prepare('UPDATE duels SET prize_a = ?, prize_b = ? WHERE id = ?').bind(pa, pb, d.id));
+    if (pa) writes.push(env.DB.prepare('UPDATE players SET xp = xp + ? WHERE address = ?').bind(pa, d.a));
+    if (pb) writes.push(env.DB.prepare('UPDATE players SET xp = xp + ? WHERE address = ?').bind(pb, d.b));
+    await env.DB.batch(writes);
+  }
+  return getDuel(env, d.id);
+}
+
+async function duelView(env, d, me) {
+  const ids = [d.a, d.b].filter(Boolean), who = {};
+  const { results } = await env.DB.prepare(`SELECT address, nick, xp, squeeks FROM players WHERE address IN (${ids.map(() => '?').join(', ')})`).bind(...ids).all();
+  for (const r of results) who[r.address] = r;
+  const side = k => {
+    const addr = d[k];
+    if (!addr) return null;
+    const p = who[addr] || {};
+    return { id: addr, address: short(addr), nick: p.nick || null, holder: p.squeeks > 0, hamsterLevel: SIM.levelForXp(p.xp || 0),
+      started: !!d[k + '_run'], done: d[k + '_score'] != null, score: d[k + '_score'], level: d[k + '_level'], prize: d['prize_' + k] };
+  };
+  return {
+    id: d.id, status: d.resolved_at ? 'done' : !d.b ? 'open' : 'live', winner: d.winner,
+    createdAt: d.created_at, expiresAt: d.expires_at, a: side('a'), b: side('b'),
+    you: me === d.a ? 'a' : me && me === d.b ? 'b' : null,
+  };
+}
+
+async function duelGet(req, env, address, id) {
+  const d = await resolveDuel(env, await getDuel(env, id));
+  if (!d) return fail(req, 404, 'no_duel', 'That duel was not found.');
+  return json(req, { duel: await duelView(env, d, address) });
+}
+
+async function myDuels(req, env, address) {
+  const { results } = await env.DB.prepare('SELECT * FROM duels WHERE a = ? OR b = ? ORDER BY created_at DESC LIMIT 8').bind(address, address).all();
+  const list = [];
+  for (const d of results) list.push(await duelView(env, await resolveDuel(env, d), address));
+  return json(req, { duels: list, prizesPerDay: DUEL_PRIZES_PER_DAY, winXp: DUEL_WIN_XP });
+}
+
+async function startDuelRun(req, env, address, duelId) {
+  const d = await getDuel(env, duelId);
+  if (!d) return fail(req, 404, 'no_duel', 'That duel was not found.');
+  if (d.resolved_at || nowS() >= d.expires_at) return fail(req, 410, 'duel_over', 'This duel has ended.');
+  let side = d.a === address ? 'a' : d.b === address ? 'b' : null;
+  if (!side) {
+    const claim = d.b ? null : await env.DB.prepare('UPDATE duels SET b = ? WHERE id = ? AND b IS NULL').bind(address, d.id).run();
+    if (!claim || !claim.meta.changes) return fail(req, 403, 'duel_full', 'Two hamsters are already in this duel.');
+    side = 'b';
+  } else if (d[side + '_run']) return fail(req, 409, 'duel_played', 'You have had your go in this duel.');
+  const id = randomHex(16);
+  const took = await env.DB.prepare(`UPDATE duels SET ${side}_run = ? WHERE id = ? AND ${side}_run IS NULL`).bind(id, d.id).run();
+  if (!took.meta.changes) return fail(req, 409, 'duel_played', 'You have had your go in this duel.');
+  await env.DB.prepare('INSERT INTO runs (id, address, started_at, mode, day, work, duel) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, address, nowS(), 'duel', d.day, d.work, d.id).run();
+  const o = side === 'a' ? 'b' : 'a';
+  const rival = d[o + '_score'] != null
+    ? { id: d[o], address: short(d[o]), nick: (await getPlayer(env, d[o]) || {}).nick || null, score: d[o + '_score'], level: d[o + '_level'], ticks: d[o + '_ticks'], inputs: JSON.parse(d[o + '_inputs']) }
+    : null;
+  return json(req, { runId: id, mode: 'duel', duel: d.id, day: d.day, seed: d.seed, goldTicks: SIM.goldPlan(d.day, d.work).ticks, rival });
 }
 
 // ---------- boards ----------
 const boardRow = (p, i) => ({ rank: i + 1, id: p.address, address: short(p.address), nick: p.nick || null, holder: p.squeeks > 0, streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, hamsterLevel: SIM.levelForXp(p.xp || 0) });
 
 async function leaderboard(req, env) {
+  if (new URL(req.url).searchParams.get('by') === 'duels') {
+    const { results } = await env.DB.prepare(
+      'SELECT address, nick, squeeks, streak, last_play_day, xp, duel_wins, duel_losses FROM players WHERE duel_wins > 0 ORDER BY duel_wins DESC, duel_losses ASC LIMIT 20'
+    ).all();
+    return json(req, { players: results.map((p, i) => ({ ...boardRow(p, i), wins: p.duel_wins, record: `${p.duel_wins}–${p.duel_losses}` })) });
+  }
   const { results } = await env.DB.prepare(
     'SELECT address, nick, best_score, best_level, squeeks, streak, last_play_day, xp FROM players WHERE best_score > 0 ORDER BY best_score DESC, last_run_at ASC LIMIT 20'
   ).all();
@@ -481,10 +608,14 @@ export default {
       const address = await sessionAddress(req, env);
       if (req.method === 'GET' && path === '/daily') return daily(req, env, address);
       if (req.method === 'GET' && path === '/missions') return json(req, await missionsView(env, address));
+      const duelPath = path.match(/^\/duels\/([0-9a-f]{10})$/);
+      if (req.method === 'GET' && duelPath) return duelGet(req, env, address, duelPath[1]);
       if (!address) return fail(req, 401, 'signed_out', 'Sign in with your wallet first.');
       if (req.method === 'GET' && path === '/me') return me(req, env, address);
       if (req.method === 'PATCH' && path === '/me') return patchMe(req, env, address);
       if (req.method === 'POST' && path === '/runs') return startRun(req, env, address);
+      if (req.method === 'GET' && path === '/duels') return myDuels(req, env, address);
+      if (req.method === 'POST' && path === '/duels') return createDuel(req, env, address);
       const fin = path.match(/^\/runs\/([0-9a-f]{32})\/finish$/);
       if (req.method === 'POST' && fin) return finishRun(req, env, address, fin[1]);
       return fail(req, 404, 'not_found', 'No such endpoint.');

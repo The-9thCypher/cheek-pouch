@@ -136,7 +136,7 @@ canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-
 .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
 .steps div { background: rgba(51, 37, 27, .9); border: 1px solid var(--soil-3); border-radius: 10px; padding: 8px; font-size: 14px; line-height: 1.25; }
 .steps b { display: block; font-family: var(--display); font-weight: 400; color: var(--seed); font-size: 1.05rem; }
-.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 12px; padding: 4px; }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 12px; padding: 4px; }
 .modes button { border: 0; background: none; color: var(--muted); border-radius: 9px; padding: 8px 6px; font-family: var(--display); font-size: 1.05rem; }
 .modes button[aria-selected="true"] { background: var(--seed); color: #3b2410; }
 .modes button:disabled { opacity: .4; cursor: not-allowed; }
@@ -146,6 +146,11 @@ canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-
 .modeBody .gold { color: var(--seed); }
 .check { display: flex; align-items: center; gap: 8px; color: var(--cream); font-size: 14px; cursor: pointer; }
 .check input { accent-color: var(--seed); width: 16px; height: 16px; }
+.duels { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; width: 100%; }
+.duels li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 10px; padding: 6px 10px; font-size: 13px; text-align: left; }
+.duels li.won { border-color: var(--seed); }
+.duels li span { flex: 1 1 160px; }
+.duels li button { flex: none; }
 .challenge { width: 100%; box-sizing: border-box; background: #3d2b14; border: 1px solid var(--seed); border-radius: 12px; padding: 8px 12px; font-size: 14px; color: var(--cream); }
 .challenge b { color: var(--seed); }
 .tally { font-family: var(--mono); font-size: 14px; display: grid; grid-template-columns: auto auto; gap: 4px 18px; text-align: left; font-variant-numeric: tabular-nums; margin: 0; }
@@ -201,7 +206,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 .mute[aria-pressed="true"] { color: var(--muted); text-decoration: line-through; }
 .mute + .mute { margin-left: 0; }
 .tabs { display: flex; gap: 4px; background: var(--soil); border-radius: 10px; padding: 3px; }
-.tabs button { flex: 1; border: 0; background: none; color: var(--muted); border-radius: 8px; padding: 4px 6px; font-family: var(--mono); font-size: 12px; }
+.tabs button { flex: 1; border: 0; background: none; color: var(--muted); border-radius: 8px; padding: 4px 4px; font-family: var(--mono); font-size: 12px; white-space: nowrap; }
 .tabs button[aria-selected="true"] { background: var(--soil-3); color: var(--cream); }
 .board { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
 .board li { display: grid; grid-template-columns: 2.5ch minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 8px; background: var(--soil); }
@@ -325,6 +330,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
           <button type="button" role="tab" data-board="daily" aria-selected="true">Today</button>
           <button type="button" role="tab" data-board="all" aria-selected="false">All time</button>
           <button type="button" role="tab" data-board="blocks" aria-selected="false">Blocks</button>
+          <button type="button" role="tab" data-board="duels" aria-selected="false">Duels</button>
         </div>
         <div class="blockNow" id="blockNow" hidden></div>
         <ol class="board" id="board"><li class="empty">Loading the board…</li></ol>
@@ -627,7 +633,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     return d;
   }
   function setSession(s) {
-    session = s; if (!s) player = null;
+    session = s; if (!s) { player = null; duels = []; }
     store('cheekpouch.session', s ? JSON.stringify({ token: s.token }) : null);
     renderAccount(); renderWardrobe(); loadMissions();
   }
@@ -666,7 +672,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       const d = await api('/auth/verify', { method: 'POST', body: { message, signature } });
       setSession({ token: d.token });
       applyPlayer(d.player);
-      loadBoard(); loadDaily();
+      loadBoard(); loadDaily(); loadDuels();
     } catch (e) {
       renderAccount();
       acctNote.textContent = e && e.code === 4001 ? 'Sign-in cancelled in your wallet.' : (e && e.message) || 'Sign-in failed. Try again.';
@@ -707,7 +713,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       nm.appendChild(document.createTextNode(v.nick || v.address));
       if (v.streak > 1) { const st = document.createElement('i'); st.textContent = ` 🔥${v.streak}`; st.title = `${v.streak}-day streak`; nm.appendChild(st); }
       nm.title = v.address;
-      const lv = document.createElement('span'); lv.className = 'lv'; lv.textContent = levelKey ? 'L' + v[levelKey] : '';
+      const lv = document.createElement('span'); lv.className = 'lv'; lv.textContent = levelKey === 'record' ? v.record : levelKey ? 'L' + v[levelKey] : '';
       const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = v[scoreKey];
       li.append(rk, nm, lv, sc);
       boardEl.appendChild(li);
@@ -741,6 +747,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         const { players } = await api('/leaderboard');
         if (!players.length) boardMsg('No runs saved yet. Sign in and be the first!'); else boardRows(players, 'bestScore', 'bestLevel');
         boardNote.textContent = 'Best verified Daily Burrow run per wallet.';
+      } else if (boardTab === 'duels') {
+        const { players } = await api('/leaderboard?by=duels');
+        if (!players.length) boardMsg('No duels won yet. Start one from the Duel tab!'); else boardRows(players, 'wins', 'record');
+        boardNote.textContent = 'Most duel wins (wins–losses). Each win pays 150 XP.';
       } else {
         renderBlocks(await api('/blocks'));
         boardNote.textContent = 'Every Squeekchain block goes to the best Daily Burrow score set while it was mined.';
@@ -802,6 +812,58 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     if (state === 'ready' || state === 'over') renderModeBody();
   }
 
+  // ---------- duels ----------
+  const duelParam = /^[0-9a-f]{10}$/.test(params.get('duel') || '') ? params.get('duel') : null;
+  let duels = [], duelSel = duelParam, duelLinked = null;
+  const duelUrl = id => `${SITE}?duel=${id}`;
+  const rivalOf = d => (d.you === 'b' ? d.a : d.b);
+  const nameOf = x => (x ? x.nick || x.address : 'someone');
+  async function loadDuels() {
+    if (!walletMode) return;
+    try { if (duelParam) duelLinked = (await api('/duels/' + duelParam)).duel; } catch (e) { duelLinked = null; }
+    try { duels = session ? (await api('/duels')).duels : []; } catch (e) {}
+    if (state === 'ready' || state === 'over') renderModeBody();
+  }
+  const duelOpen = d => d.status !== 'done' && Date.now() / 1000 < d.expiresAt;
+  const canPlayDuel = d => duelOpen(d) && (d.you ? !d[d.you].started : d.status === 'open');
+  function duelRow(d) {
+    const me = d.you && d[d.you], rv = rivalOf(d);
+    let line, won = false;
+    if (d.status === 'done') {
+      if (!d.b) line = 'Nobody accepted in time.';
+      else if (d.winner === 'tie') line = `Tie with ${esc(nameOf(rv))}, ${me.score ?? 0}–${rv.score ?? 0}`;
+      else { won = d.winner === me.id; line = `${won ? '<b>Won</b> vs' : 'Lost to'} ${esc(nameOf(rv))}, ${me.score ?? 0}–${rv.score ?? 0}`; }
+      if (me.prize) line += ` · +${me.prize} XP`;
+    } else if (!me.started) line = rv ? `${esc(nameOf(rv))} ${rv.done ? `scored <b>${rv.score}</b>` : 'is in'}. Your go!` : 'Your duel. Play your go, then send the link.';
+    else if (!me.done) line = "Your go didn't finish, so it counts as 0.";
+    else line = rv ? `You scored <b>${me.score}</b>. Waiting for ${esc(nameOf(rv))}.` : `You scored <b>${me.score}</b>. Waiting for someone to open your link.`;
+    const btns = (canPlayDuel(d) ? `<button type="button" class="small" data-duel-play="${d.id}">Play</button>` : '') +
+      (duelOpen(d) && !d.b ? `<button type="button" class="small" data-copy-duel="${d.id}">Copy link</button>` : '');
+    return `<li class="${won ? 'won' : ''}"><span>⚔ ${line}</span>${btns}</li>`;
+  }
+  function duelBodyHtml() {
+    const rules = `<p><b>Duel a friend:</b> you both get the same secret seed and <b>one try</b>. Highest score wins <span class="gold">150 XP</span> (a tie pays 75 each, everyone who plays gets 25). Duel wins unlock a medal, bandana, champion belt and ember fur.</p>`;
+    if (!walletMode) return `<p>Duels need <b>cheek-pouch.live</b> and a connection to its server. Free play works here.</p>`;
+    const L = duelLinked;
+    const invite = L && !L.you
+      ? (canPlayDuel(L) ? `<div class="challenge">⚔ <b>${esc(nameOf(L.a))}</b> challenges you to a duel${L.a.done ? ` and scored <b>${L.a.score}</b>` : ''}. Press <b>Start run</b> to accept.</div>` : '<div class="challenge">That duel is already full or over. Start your own below.</div>')
+      : '';
+    if (!session) return invite + rules + '<p><b>Sign in</b> with your wallet to start or accept a duel.</p>';
+    const list = duels.slice(0, 4).map(duelRow).join('');
+    return invite + rules + (list ? `<ul class="duels">${list}</ul>` : '') +
+      `<p class="fine">${L && !L.you && canPlayDuel(L) ? '' : '<b>Start run</b> opens a new duel: play your go, then send the link. '}Leaving mid-run uses up your try. Prize XP is paid for 3 duels a day; duels close after 48 hours.</p>`;
+  }
+  function playableDuelId() {
+    const all = duelLinked ? [duelLinked, ...duels] : duels;
+    const d = all.find(x => x.id === duelSel && canPlayDuel(x));
+    return d ? d.id : null;
+  }
+  async function copyDuel(id, b) {
+    const url = duelUrl(id);
+    try { await navigator.clipboard.writeText(url); if (b) b.textContent = 'Link copied'; }
+    catch (e) { prompt('Copy this duel link', url); }
+  }
+
   // ---------- missions ----------
   function fmtLeft(iso) {
     const ms = new Date(iso) - Date.now();
@@ -831,7 +893,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   }
 
   // ---------- wardrobe ----------
-  const FUR = { classic: ['#e39a5d', '#c97b42'], cocoa: ['#9c6644', '#7a4b2e'], snow: ['#f1ece4', '#d6cabb'], grey: ['#a8a29a', '#857e76'], golden: ['#f2c14e', '#cf9a2a'] };
+  const FUR = { classic: ['#e39a5d', '#c97b42'], cocoa: ['#9c6644', '#7a4b2e'], snow: ['#f1ece4', '#d6cabb'], grey: ['#a8a29a', '#857e76'], golden: ['#f2c14e', '#cf9a2a'], ember: ['#d8613c', '#a8432a'] };
   let localEquip = { hat: 'none', fur: 'classic', extra: 'none' };
   const equipNow = () => (player ? player.equip : localEquip);
   const pctx = $('preview').getContext('2d');
@@ -850,7 +912,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       st.innerHTML = `<span><b>Level ${p.hamsterLevel}</b> · ${(p.xp - p.xpLevelStart).toLocaleString()}/${span.toLocaleString()} XP</span>
         <span>🔥 Streak <b>${p.streak}</b> day${p.streak === 1 ? '' : 's'} (best ${p.bestStreak})</span>
         <span>⛏ Blocks won <b>${p.blocksWon}</b></span>
-        <span>🏅 Daily podiums <b>${p.podiums}</b></span>`;
+        <span>🏅 Daily podiums <b>${p.podiums}</b></span>
+        <span>⚔ Duels <b>${p.duelWins}–${p.duelLosses}</b></span>`;
       $('xpFill').style.width = Math.min(100, (p.xp - p.xpLevelStart) / span * 100) + '%';
     }
     const lvl = player ? player.hamsterLevel : 1, perks = player ? player.perks : {};
@@ -858,7 +921,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     slots.innerHTML = Object.keys(names).map(slot => `<div class="slot"><span class="k">${names[slot]}</span><div class="items">` +
       COSMETICS[slot].map(c => {
         const open = player ? SIM.unlocked(c, lvl, perks) : c.lvl === 1;
-        const need = c.perk ? { crown: 'Hold 1+ Squeek', gold: 'Hold 10+ Squeeks', shades: 'Stake 1+ Squeek', scarf: 'Own a level 2+ Squeek' }[c.perk] : `Hamster level ${c.lvl}`;
+        const need = c.perk ? { crown: 'Hold 1+ Squeek', gold: 'Hold 10+ Squeeks', shades: 'Stake 1+ Squeek', scarf: 'Own a level 2+ Squeek', duel1: 'Win a duel', duel5: 'Win 5 duels', duel15: 'Win 15 duels', duel30: 'Win 30 duels' }[c.perk] : `Hamster level ${c.lvl}`;
         return `<button type="button" data-slot="${slot}" data-item="${c.id}" aria-pressed="${equipNow()[slot] === c.id}" ${open && player ? '' : 'disabled'} title="${open ? c.name : 'Locked: ' + need}">${open ? '' : '🔒 '}${esc(c.name)}</button>`;
       }).join('') + '</div></div>').join('');
     if (!note.textContent || !player) note.textContent = player ? '' : 'Squeek holders unlock the crown, golden fur, shades and scarf.';
@@ -876,14 +939,14 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     if (session) { try { applyPlayer((await api('/me')).player); } catch (e) { if (e.status === 401) setSession(null); } }
     await loadDaily();
     if (challenge) await loadGhost(challenge.day); else if (dailyInfo) loadGhost(dailyInfo.day);
-    loadBoard(); loadMissions();
+    loadBoard(); loadMissions(); loadDuels();
     setInterval(() => { if (state !== 'play') { loadBoard(); loadMissions(); } }, 60000);
     if (state === 'ready') renderModeBody();
   }
 
   // ---------- game state ----------
   let state = 'ready'; // ready | starting | play | paused | settle | over
-  let mode = load('cheekpouch.mode') === 'classic' ? 'classic' : 'daily';
+  let mode = ['classic', 'duel'].includes(load('cheekpouch.mode')) ? load('cheekpouch.mode') : 'daily';
   let game = SIM.create({ seed: 1 }), ghost = null, run = null, rec = [], lastBits = -1, acc = 0;
   let parts = [], texts = [], toasts = [], banner = null, hint = null, firstBankAt = -1, wheelAngle = 0, lastResult = null;
 
@@ -930,6 +993,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   const challengeDay = () => (challenge && challenge.day !== todayUTC() ? challenge.day : null);
 
   function modeBodyHtml() {
+    if (mode === 'duel') return duelBodyHtml();
     if (mode === 'daily') {
       if (!dailyReady()) return `<p>The Daily Burrow needs <b>cheek-pouch.live</b> and a connection to its server. Free play works here.</p>`;
       const d = dailyInfo, past = challengeDay();
@@ -952,12 +1016,17 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     return `<div class="modes" role="tablist" aria-label="Game mode">
         <button type="button" role="tab" data-mode="daily" aria-selected="${mode === 'daily'}">Daily Burrow</button>
         <button type="button" role="tab" data-mode="classic" aria-selected="${mode === 'classic'}">Free play</button>
+        <button type="button" role="tab" data-mode="duel" aria-selected="${mode === 'duel'}">Duel</button>
       </div>
       <div class="modeBody" id="modeBody">${modeBodyHtml()}</div>`;
   }
   card.addEventListener('click', e => {
     const m = e.target.closest('[data-mode]');
     if (m) { mode = m.dataset.mode; store('cheekpouch.mode', mode); renderModeBody(); return; }
+    const play = e.target.closest('[data-duel-play]');
+    if (play) { duelSel = play.dataset.duelPlay; start(); return; }
+    const cp = e.target.closest('[data-copy-duel]');
+    if (cp) copyDuel(cp.dataset.copyDuel, cp);
   });
   card.addEventListener('change', e => { if (e.target.id === 'ghostBox') { ghostOn = e.target.checked; store('cheekpouch.ghost', ghostOn ? '1' : '0'); } });
   function introCard() {
@@ -976,19 +1045,33 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     $('startBtn').onclick = start;
   }
   if (challenge) mode = 'daily';
+  if (duelParam) mode = 'duel';
   introCard();
 
   // ---------- run flow ----------
   async function start() {
     if (state === 'starting') return;
-    if (mode === 'daily' && !dailyReady()) mode = 'classic';
+    if ((mode === 'daily' && !dailyReady()) || (mode === 'duel' && !walletMode)) mode = 'classic';
+    if (mode === 'duel' && !session) { toast('Sign in with your wallet to duel.', '#ec6a4f'); return; }
     audio();
     state = 'starting';
     const btn = $('startBtn') || $('againBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
     run = { mode, saved: false, id: null, day: null, practice: false };
     let opts;
-    if (mode === 'daily') {
+    if (mode === 'duel') {
+      try {
+        let id = playableDuelId();
+        if (!id) { const c = await api('/duels', { method: 'POST' }); id = c.duel.id; duels.unshift(c.duel); }
+        const r = await api('/runs', { method: 'POST', body: { mode: 'duel', duel: id } });
+        Object.assign(run, { id: r.runId, day: r.day, duel: id, rival: r.rival });
+        opts = { seed: r.seed, goldTicks: r.goldTicks, mult: 1 };
+        ghost = r.rival ? { g: SIM.create(opts), data: r.rival, k: 0, bits: 0 } : null;
+        duelSel = null;
+      } catch (e) {
+        state = 'ready'; introCard(); toast(e.message, '#ec6a4f'); loadDuels(); return;
+      }
+    } else if (mode === 'daily') {
       const past = challengeDay();
       if (past) {
         const d = await loadDaily(past);
@@ -1014,7 +1097,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     rec = []; lastBits = -1; acc = 0;
     parts = []; texts = []; toasts = []; banner = null; hint = null; firstBankAt = -1;
     streak = { n: 0, show: 0 }; fx.shake = fx.freeze = 0; wasGround = true; wasFace = 1;
-    $('hudMode').textContent = mode === 'daily' ? `Daily Burrow ${fmtDay(run.day)}${run.practice ? ' · practice' : ''}` : 'Free play';
+    $('hudMode').textContent = mode === 'daily' ? `Daily Burrow ${fmtDay(run.day)}${run.practice ? ' · practice' : ''}`
+      : mode === 'duel' ? `Duel${run.rival ? ' vs ' + nameOf(run.rival) : ''}` : 'Free play';
     state = 'play';
     overlay.hidden = true;
     last = performance.now();
@@ -1041,7 +1125,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     sfx.over();
     const s = game.s, leftover = s.ham.held.length, secs = s.t;
     if (!tutored && s.banks > 0) markTutored();
-    showCard(`<h2>Out of hearts</h2><p>${mode === 'daily' && run.id ? 'Replaying your run on the server…' : 'Saving your run…'}</p>`);
+    showCard(`<h2>Out of hearts</h2><p>${mode !== 'classic' && run.id ? 'Replaying your run on the server…' : 'Saving your run…'}</p>`);
     const final = s.score;
     const isBest = final > best;
     if (isBest) saveBest(final);
@@ -1052,21 +1136,23 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       else if (!run.id) msg = 'This run could not be saved. Check your connection.';
       else {
         try {
-          const body = mode === 'daily'
+          const body = mode !== 'classic'
             ? { score: final, level: s.level, ticks: s.tick, inputs: rec }
             : { score: final, level: s.level };
+          const perksBefore = player ? player.perks : {};
           res = await api(`/runs/${run.id}/finish`, { method: 'POST', body });
+          res.perksBefore = perksBefore;
           applyPlayer(res.player);
-          if (!res.verified) msg = 'Free play is practice: it counted toward your streak and run missions. Daily Burrow runs reach the boards.';
+          if (!res.verified && mode === 'classic') msg = 'Free play is practice: it counted toward your streak and run missions. Daily Burrow runs reach the boards.';
         } catch (e) { msg = e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
       }
     } else msg = await postClaudeScore(final, secs);
     log(`Run over, <b>${final}</b> points`);
-    lastResult = { mode, day: run.day, score: final, level: s.level, secs, rank: res && res.daily ? res.daily.rank : null, practice: run.practice };
+    lastResult = { mode, day: run.day, score: final, level: s.level, secs, rank: res && res.daily ? res.daily.rank : null, practice: run.practice, duel: run.duel || null };
     state = 'over';
     if (res && res.levelUp) { sfx.level(); }
     endCard({ s, final, leftover, isBest, res, msg, secs });
-    if (walletMode) { loadBoard(); loadMissions(); if (mode === 'daily') loadGhost(run.day); }
+    if (walletMode) { loadBoard(); loadMissions(); if (mode === 'daily') loadGhost(run.day); if (mode === 'duel') loadDuels(); }
   }
 
   function endCard({ s, final, leftover, isBest, res, msg, secs }) {
@@ -1081,16 +1167,31 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       if (res.streak > 1) badges.push(`<span class="badge">🔥 ${res.streak}-day streak</span>`);
       if (res.isBest) badges.push(`<span class="badge gold">New personal best</span>`);
       for (const m of res.missionsDone) badges.push(`<span class="badge gold">✓ ${esc(m.title)} +${m.xp} XP</span>`);
+      const prizes = Object.values(COSMETICS).flat().filter(c => c.perk && c.perk.startsWith('duel') && res.player.perks[c.perk] && !(res.perksBefore || {})[c.perk]);
+      if (prizes.length) badges.push(`<span class="badge gold">Duel prize unlocked: ${prizes.map(c => esc(c.name)).join(', ')}</span>`);
       if (res.levelUp) {
         const fresh = Object.values(COSMETICS).flat().filter(c => c.lvl > res.levelFrom && c.lvl <= res.levelUp);
         if (fresh.length) badges.push(`<span class="badge gold">Unlocked: ${fresh.map(c => esc(c.name)).join(', ')}</span>`);
       }
     }
     const canChallenge = mode === 'daily' && lastResult.day;
+    let duelHtml = '';
+    const dv = res && res.duel;
+    if (dv) {
+      const me = dv[dv.you], rv = rivalOf(dv);
+      let line;
+      if (dv.status === 'done') line = dv.winner === 'tie' ? `It's a tie with ${esc(nameOf(rv))}, ${me.score}–${rv.score ?? 0}!`
+        : dv.winner === me.id ? `<b>You beat ${esc(nameOf(rv))}</b>, ${me.score}–${rv.score ?? 0}!` : `${esc(nameOf(rv))} wins this one, ${rv.score}–${me.score}.`;
+      else line = rv ? `Waiting for ${esc(nameOf(rv))} to play.` : `Now send your duel link. Whoever opens it first gets one try to beat <b>${me.score}</b>.`;
+      duelHtml = `<div class="challenge">⚔ ${line}${me.prize ? ` <b class="gold">+${me.prize} XP prize</b>` : ''}</div>`;
+      if (dv.status === 'done' && dv.winner === me.id) sfx.level();
+    }
+    const canCopyDuel = dv && dv.status !== 'done' && !dv.b;
     showCard(`
-      <h2>Out of hearts</h2>
+      <h2>${dv && dv.status === 'done' ? (dv.winner === dv[dv.you].id ? 'Duel won!' : dv.winner === 'tie' ? 'Dead heat' : 'Duel lost') : 'Out of hearts'}</h2>
+      ${duelHtml}
       <dl class="tally">
-        <dt>Mode</dt><dd>${mode === 'daily' ? `Daily Burrow ${fmtDay(lastResult.day)}` : 'Free play'}</dd>
+        <dt>Mode</dt><dd>${mode === 'daily' ? `Daily Burrow ${fmtDay(lastResult.day)}` : mode === 'duel' ? 'Duel' : 'Free play'}</dd>
         <dt>Reached</dt><dd>level ${s.level} in ${Math.floor(secs / 60)}:${String(Math.floor(secs % 60)).padStart(2, '0')}</dd>
         <dt>Banked in ${s.banks} trip${s.banks === 1 ? '' : 's'}</dt><dd>${s.score}</dd>
         ${leftover ? `<dt>Still in cheeks (lost)</dt><dd>${leftover} seed${leftover === 1 ? '' : 's'}</dd>` : ''}
@@ -1103,6 +1204,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         <button type="button" class="small" id="shareBtn">Share card</button>
         ${canChallenge ? `<a class="small" id="xBtn" target="_blank" rel="noopener" href="${xIntent()}">Post on X</a>
         <button type="button" class="small" id="copyBtn">Copy challenge link</button>` : ''}
+        ${canCopyDuel ? `<button type="button" class="small" data-copy-duel="${dv.id}">Copy duel link</button>` : ''}
       </div>
       ${modePicker()}
       <button class="go" type="button" id="againBtn">Run again</button>`);
@@ -1141,7 +1243,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     x.textBaseline = 'alphabetic'; x.textAlign = 'left';
     x.font = '96px "Lilita One", sans-serif'; x.fillStyle = '#7a4a1c'; x.fillText('Cheek Pouch', 64, 150); x.fillStyle = '#f2c14e'; x.fillText('Cheek Pouch', 64, 144);
     x.font = '600 30px "JetBrains Mono", monospace'; x.fillStyle = '#82cfe0';
-    x.fillText(r.mode === 'daily' ? `DAILY BURROW · ${fmtDay(r.day).toUpperCase()}` : 'FREE PLAY', 68, 206);
+    x.fillText(r.mode === 'daily' ? `DAILY BURROW · ${fmtDay(r.day).toUpperCase()}` : r.mode === 'duel' ? 'DUEL' : 'FREE PLAY', 68, 206);
     x.font = '170px "Lilita One", sans-serif'; x.fillStyle = '#f6ead7'; x.fillText(String(r.score), 60, 380);
     x.font = '600 32px "JetBrains Mono", monospace'; x.fillStyle = '#bda68c';
     x.fillText(`Level ${r.level}${r.rank ? ` · #${r.rank} today` : ''}${player && player.streak > 1 ? ` · ${player.streak}-day streak` : ''}`, 68, 432);
@@ -1157,7 +1259,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     const c = cardCanvas();
     const blob = await new Promise(res => c.toBlob(res, 'image/png'));
     const file = new File([blob], `cheek-pouch-${lastResult.score}.png`, { type: 'image/png' });
-    const url = lastResult.mode === 'daily' ? challengeUrl() : SITE;
+    const url = lastResult.mode === 'daily' ? challengeUrl() : lastResult.duel ? duelUrl(lastResult.duel) : SITE;
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: shareText(), url }); return; }
     } catch (e) { if (e && e.name === 'AbortError') return; }
@@ -1371,6 +1473,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     drawWheel(740, 344, 46);
     let st;
     if (mode === 'daily') st = ['Daily Burrow · same run for everyone · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
+    else if (mode === 'duel') st = ['Duel · one try · same seed as your rival', '#f6ead7', 'rgba(176,74,143,.85)'];
     else st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
       : live.running ? ['Real hamster RUNNING · banks ×2', '#1d2a12', 'rgba(159,209,111,.95)']
       : ['Real hamster asleep · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
@@ -1551,6 +1654,19 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     drawOutfit(c, eq);
   }
   function drawOutfit(c, eq) {
+    if (eq.extra === 'belt') {
+      c.save(); c.beginPath(); c.ellipse(0, -R, 28, 22, 0, 0, 7); c.clip();
+      c.fillStyle = '#7a2f1c'; c.fillRect(-30, -R + 6, 60, 8); c.restore();
+      c.fillStyle = '#ffd23f'; c.strokeStyle = '#b8860b'; c.lineWidth = 1.5;
+      c.beginPath(); if (c.roundRect) c.roundRect(6, -R + 3, 14, 13, 3); else c.rect(6, -R + 3, 14, 13); c.fill(); c.stroke();
+      c.fillStyle = '#b8860b'; c.beginPath(); c.arc(13, -R + 9.5, 2.5, 0, 7); c.fill();
+    }
+    if (eq.extra === 'medal') {
+      c.strokeStyle = '#3f6fc4'; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(4, -16); c.lineTo(10, -6); c.lineTo(18, -16); c.stroke();
+      c.fillStyle = '#ffd23f'; c.strokeStyle = '#b8860b'; c.lineWidth = 1.2;
+      c.beginPath(); c.arc(10, -3, 5, 0, 7); c.fill(); c.stroke();
+    }
     if (eq.extra === 'scarf') { c.fillStyle = '#ec6a4f'; c.beginPath(); c.ellipse(10, -9, 17, 5, 0, 0, 7); c.fill(); c.fillRect(-6, -9, 7, 15); }
     if (eq.extra === 'bowtie') {
       c.fillStyle = '#b04a8f';
@@ -1579,6 +1695,12 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       c.fillStyle = '#4f8a3a'; c.beginPath(); c.ellipse(2, -44, 19, 13, 0, Math.PI, 0); c.fill();
       c.fillStyle = '#3d6544'; c.fillRect(-17, -47, 38, 5);
       c.fillStyle = '#f6ead7'; c.beginPath(); c.arc(2, -58, 4, 0, 7); c.fill();
+    } else if (eq.hat === 'bandana') {
+      c.fillStyle = '#d8433b';
+      c.beginPath(); c.ellipse(2, -45, 19, 5, 0, 0, 7); c.fill();
+      c.beginPath(); c.moveTo(-15, -46); c.lineTo(-27, -52); c.lineTo(-25, -42); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(-15, -45); c.lineTo(-24, -37); c.lineTo(-18, -36); c.closePath(); c.fill();
+      c.fillStyle = '#f6ead7'; for (const dx of [-8, 2, 12]) { c.beginPath(); c.arc(dx, -45, 1.3, 0, 7); c.fill(); }
     } else if (eq.hat === 'tophat') {
       c.fillStyle = '#1b120c'; c.fillRect(-7, -72, 22, 24); c.fillRect(-13, -50, 34, 5);
       c.fillStyle = '#ec6a4f'; c.fillRect(-7, -54, 22, 4);

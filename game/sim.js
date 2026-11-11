@@ -283,19 +283,22 @@ const SIM = (() => {
     return g.s;
   }
 
-  // wardrobe: unlocked by hamster level, or by real Squeek holdings (perk)
+  // wardrobe: unlocked by hamster level, real Squeek holdings or duel wins (perk)
   const COSMETICS = {
     hat: [
       { id: 'none', name: 'No hat', lvl: 1 }, { id: 'party', name: 'Party hat', lvl: 2 }, { id: 'flower', name: 'Sunflower', lvl: 4 },
       { id: 'beanie', name: 'Beanie', lvl: 6 }, { id: 'tophat', name: 'Top hat', lvl: 10 }, { id: 'crown', name: 'Holder crown', perk: 'crown' },
+      { id: 'bandana', name: 'Duelist bandana', perk: 'duel5' },
     ],
     fur: [
       { id: 'classic', name: 'Classic', lvl: 1 }, { id: 'cocoa', name: 'Cocoa', lvl: 3 }, { id: 'snow', name: 'Snow', lvl: 5 },
       { id: 'grey', name: 'Grey', lvl: 8 }, { id: 'golden', name: 'Golden', perk: 'gold' },
+      { id: 'ember', name: 'Ember', perk: 'duel30' },
     ],
     extra: [
       { id: 'none', name: 'Nothing', lvl: 1 }, { id: 'bowtie', name: 'Bow tie', lvl: 7 },
       { id: 'shades', name: 'Staker shades', perk: 'shades' }, { id: 'scarf', name: 'Merge scarf', perk: 'scarf' },
+      { id: 'medal', name: 'Duel medal', perk: 'duel1' }, { id: 'belt', name: 'Champion belt', perk: 'duel15' },
     ],
   };
   const xpForLevel = L => 150 * (L - 1) * L; // total XP needed to reach hamster level L
