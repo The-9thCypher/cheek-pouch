@@ -33,7 +33,7 @@ body {
   line-height: 1.45;
 }
 .wrap {
-  max-width: 1120px;
+  max-width: 1000px;
   margin: 0 auto;
   padding-block: 20px 40px;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -83,7 +83,20 @@ h1 {
 .bar > span { display: block; height: 100%; background: var(--wheel); width: 0; transition: width .6s; }
 
 /* main */
-.main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.main { display: grid; gap: 16px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; align-items: start; }
+.more { border: 1px solid var(--soil-3); border-radius: 14px; background: var(--soil-2); }
+.more > summary { cursor: pointer; padding: 12px 16px; font-family: var(--display); font-size: 1.1rem; color: var(--cream); list-style: none; display: flex; align-items: center; gap: 10px; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::before { content: "▸"; color: var(--seed); transition: transform .2s; }
+.more[open] > summary::before { transform: rotate(90deg); }
+.more > summary:focus-visible { outline: 3px solid var(--wheel); outline-offset: -3px; border-radius: 14px; }
+.more > .cards { padding: 0 14px 14px; }
+.more .box { background: var(--soil); }
+.levels { display: flex; flex-wrap: wrap; gap: 6px; }
+.levels span { font-size: 13px; color: var(--muted); background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 999px; padding: 2px 10px; }
+.levels b { color: var(--seed); font-family: var(--mono); font-size: 12px; margin-right: 4px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .stage { display: grid; gap: 10px; min-width: 0; }
 .hud {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
@@ -144,7 +157,6 @@ button:focus-visible { outline: 3px solid var(--wheel); outline-offset: 2px; }
 .pad button.held { background: var(--soil-3); }
 @media (pointer: coarse) { .pad { display: grid; } .keys { display: none; } }
 
-aside { display: grid; gap: 14px; min-width: 0; }
 .box { background: var(--soil-2); border: 1px solid var(--soil-3); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
 .box h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.25rem; color: var(--cream); }
 .box p, .box li { margin: 0; color: var(--muted); font-size: 15px; }
@@ -176,19 +188,23 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 .inp:focus-visible { outline: 2px solid var(--wheel); outline-offset: 1px; }
 .small { border: 1px solid var(--soil-3); background: var(--soil-3); color: var(--cream); border-radius: 8px; padding: 6px 12px; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
 .lbl2 { font-size: 13px; color: var(--muted); }
-.box .perks { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.box .perks li { background: var(--soil); border-radius: 8px; padding: 6px 8px; font-size: 13px; line-height: 1.25; border: 1px solid transparent; }
-.box .perks li b { display: block; font-family: var(--display); font-weight: 400; font-size: 15px; color: var(--muted); }
+.box .perks { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.box .perks li { background: var(--soil); border-radius: 8px; padding: 6px 4px; font-size: 12px; line-height: 1.2; border: 1px solid transparent; text-align: center; color: var(--muted); }
+.box .perks li b { display: block; font-family: var(--display); font-weight: 400; font-size: 14px; color: var(--muted); }
 .box .perks li.on { border-color: var(--seed); }
 .box .perks li.on b { color: var(--seed); }
 
 @media (max-width: 900px) {
-  .main { grid-template-columns: minmax(0, 1fr); }
   .live { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live > .state { grid-column: 1 / -1; }
 }
 @media (max-width: 560px) {
-  .steps { grid-template-columns: minmax(0, 1fr); }
+  /* the playfield is too short on phones for the start/end card, so the card takes its place */
+  .field:has(.overlay:not([hidden])) canvas { display: none; }
+  .overlay { position: static; background: var(--soil-2); padding: 16px 12px; }
+  .steps { gap: 6px; }
+  .steps div { font-size: 12px; padding: 6px; }
+  .steps b { font-size: .95rem; }
   .card > p:not(.fine) { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -224,6 +240,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         <span><span class="lbl">Hearts</span><span class="hearts" id="hudHearts">♥♥♥</span></span>
         <span><span class="lbl">Score</span><span class="score" id="hudScore">0</span></span>
         <span><span class="lbl">Level</span><span class="score" id="hudLevel">1</span></span>
+        <span><span class="lbl">Best</span><span id="best">0</span></span>
         <span class="timebar" aria-label="Progress to next level"><span id="hudTime"></span></span>
         <button type="button" class="mute" id="muteBtn" aria-pressed="false">Sound</button>
       </div>
@@ -239,65 +256,70 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       <div class="keys"><kbd>←</kbd> <kbd>→</kbd> run · <kbd>Space</kbd> hop · <kbd>Enter</kbd> start · <kbd>P</kbd> pause · <kbd>M</kbd> sound</div>
     </div>
 
-    <aside>
-      <div class="box">
+    <section class="cards" aria-label="Board, perks and payouts">
+      <div class="box" id="boardBox">
         <h3>Top burrowers</h3>
         <ol class="board" id="board"><li class="empty">Loading the board…</li></ol>
-        <label class="lbl2" for="nick">Your name on the board</label>
-        <input class="inp" id="nick" type="text" maxlength="16" placeholder="Pick a name" autocomplete="off">
+        <div class="row">
+          <label class="sr" for="nick">Your name on the board</label>
+          <input class="inp" id="nick" type="text" maxlength="16" placeholder="Your name on the board" autocomplete="off">
+        </div>
         <p class="src" id="boardNote">Your best run is posted when it beats your last one.</p>
       </div>
 
       <div class="box">
         <h3>Squeek perks</h3>
-        <p>Hold Squeeks? Dress your hamster up. Perks change how it looks, never your score.</p>
         <div class="row">
+          <label class="sr" for="walletIn">Wallet address</label>
           <input class="inp" id="walletIn" type="text" placeholder="0x… wallet address" spellcheck="false" autocomplete="off">
           <button type="button" class="small" id="walletBtn">Check</button>
         </div>
         <button type="button" class="small" id="connectBtn" hidden>Use my connected wallet</button>
-        <p class="src" id="walletNote">Read-only lookup on Squeekchain. Nothing is signed or sent.</p>
         <ul class="perks" id="perks">
-          <li data-perk="crown"><b>Holder crown</b>Hold 1+ Squeek</li>
-          <li data-perk="shades"><b>Staker shades</b>Stake 1+ Squeek</li>
-          <li data-perk="scarf"><b>Merge scarf</b>Own a level 2+ Squeek</li>
-          <li data-perk="gold"><b>Golden fur</b>Hold 10+ Squeeks</li>
+          <li data-perk="crown" title="Hold 1+ Squeek"><b>Crown</b>Hold 1+</li>
+          <li data-perk="shades" title="Stake 1+ Squeek"><b>Shades</b>Stake 1+</li>
+          <li data-perk="scarf" title="Own a level 2+ Squeek"><b>Scarf</b>Level 2+</li>
+          <li data-perk="gold" title="Hold 10+ Squeeks"><b>Golden fur</b>Hold 10+</li>
         </ul>
+        <p class="src" id="walletNote">Looks only, never your score. Read-only, nothing is signed.</p>
       </div>
 
       <div class="box">
         <h3>Bigger trips pay more</h3>
-        <p>Every seed in your cheeks is worth more than the last. The sign over the burrow always shows what you'd get right now.</p>
         <div class="payout">
           <div>1 seed<b>1</b></div><div>4 seeds<b>10</b></div><div>8 seeds<b>36</b></div><div>12 seeds<b>78</b></div>
         </div>
-        <ul>
-          <li><b>Golden seeds</b> add 20 and fall only when the real wheel logs work.</li>
-          <li>A hit spills <b>half</b> your cheeks onto the ground. Grab them back before they fade.</li>
-          <li>Full cheeks make you a little slower.</li>
-        </ul>
+        <p class="src">The burrow sign shows what you'd bank right now. Golden seeds add 20.</p>
       </div>
+    </section>
 
-      <div class="box">
-        <h3>It keeps getting harder</h3>
-        <p>There's no timer. A new level starts every 20 seconds, and each one adds something:</p>
-        <ul>
-          <li><b>Level 2</b> faster pebbles</li>
-          <li><b>Level 3</b> pebbles in pairs</li>
-          <li><b>Level 4</b> a quicker cat</li>
-          <li><b>Level 5</b> pebble storms</li>
-          <li><b>Level 6</b> double swipes</li>
-          <li><b>Level 7+</b> everything speeds up</li>
-        </ul>
+    <details class="more">
+      <summary>Rules, levels and wheel log</summary>
+      <div class="cards">
+        <div class="box">
+          <h3>Rules</h3>
+          <ul>
+            <li><b>Golden seeds</b> add 20 and fall only when the real wheel logs work.</li>
+            <li>A hit spills <b>half</b> your cheeks onto the ground. Grab them back before they fade.</li>
+            <li>Full cheeks make you a little slower.</li>
+            <li>While the real hamster runs, every bank pays <b>×2</b>.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>It keeps getting harder</h3>
+          <p>A new level every 20 seconds:</p>
+          <div class="levels">
+            <span><b>L2</b> faster pebbles</span><span><b>L3</b> pairs</span><span><b>L4</b> quicker cat</span>
+            <span><b>L5</b> pebble storms</span><span><b>L6</b> double swipes</span><span><b>L7+</b> faster still</span>
+          </div>
+        </div>
+        <div class="box">
+          <h3>Wheel log</h3>
+          <div class="log" id="log"><div>Waiting for the first reading…</div></div>
+          <p class="src">Feed: <a href="https://squeekchain.com" target="_blank" rel="noopener">Squeekchain</a> public API, checked every 8 s.</p>
+        </div>
       </div>
-
-      <div class="box">
-        <h3>Wheel log</h3>
-        <div class="log" id="log"><div>Waiting for the first reading…</div></div>
-        <p class="src">Best run on this device: <b id="best">0</b></p>
-        <p class="src">Feed: <a href="https://squeekchain.com" target="_blank" rel="noopener">Squeekchain</a> public API, checked every 8 s.</p>
-      </div>
-    </aside>
+    </details>
   </div>
 </div>
 
@@ -440,9 +462,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   }
   async function initBoard() {
     const cl = window.claude;
-    if (!cl || typeof cl.use !== 'function') { boardMsg('The shared board works when the game is opened on claude.ai.'); nickIn.disabled = true; return; }
+    // off claude.ai (or signed out) there is no shared store, so drop the card entirely
+    if (!cl || typeof cl.use !== 'function') { $('boardBox').hidden = true; return; }
     const [d, u] = await Promise.all([cl.use('db'), cl.use('user')]);
-    if (!d) { boardMsg('Sign in to claude.ai to see and join the board.'); nickIn.disabled = true; return; }
+    if (!d) { $('boardBox').hidden = true; return; }
     db = d;
     uid = u ? await u.id() : null;
     if (!uid) { boardNote.textContent = 'You can see the board, but posting needs a signed-in account.'; canPost = false; }
