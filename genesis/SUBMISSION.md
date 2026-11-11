@@ -4,7 +4,7 @@
 
 - **Builder:** The-9thCypher
 - **Builder wallet:** `0x6d230066601100630134a7d694a4d873e273c530`
-- **Live site:** https://the-9thcypher.github.io/cheek-pouch/ (switch to your own domain once it is set up)
+- **Live site:** https://cheek-pouch.live
 - **Repository:** https://github.com/The-9thCypher/cheek-pouch
 
 ## One-line pitch

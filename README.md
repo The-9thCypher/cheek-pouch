@@ -4,7 +4,7 @@
 
 An endless hamster arcade game for the Squeekchain hamster economy. Stuff sunflower seeds into your cheeks, dodge angry red-hot pebbles and the cat's paw, and carry your haul home to the burrow. The bigger the haul, the bigger the payout: n seeds bank for 1+2+…+n.
 
-**Play:** https://the-9thcypher.github.io/cheek-pouch/
+**Play:** https://cheek-pouch.live
 
 **Builder:** [The-9thCypher](https://github.com/The-9thCypher) · wallet `0x6d230066601100630134a7d694a4d873e273c530`
 
