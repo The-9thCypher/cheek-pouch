@@ -41,4 +41,6 @@ No transactions are sent and no keys are handled; the only signature is the free
 - `api/` is the Cloudflare Worker and D1 database behind sign-in, saved progress and the leaderboard (`npm run deploy` from that folder).
 - No build tools, no dependencies, no server.
 
+## Squeekchain Genesis
 
+squeekchain-project: 430e9294-1c8e-4e18-aacc-e1dab9dd0462
