@@ -79,6 +79,8 @@ h1 {
 .pill.idle { color: var(--wheel); }
 .pill.off { color: var(--danger); }
 @keyframes blink { 50% { opacity: .25; } }
+.usual { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+.usual:empty { display: none; }
 .bar { height: 6px; background: var(--soil); border-radius: 3px; margin-top: 6px; overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--wheel); width: 0; transition: width .6s; }
 
@@ -223,6 +225,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     <div class="state">
       <div class="k">Real hamster</div>
       <span class="pill off" id="pill"><i></i><span id="pillText">Connecting</span></span>
+      <div class="usual" id="usualTxt"></div>
     </div>
     <div><div class="k">Wheel</div><div class="v" id="lvRpm">– <small>rpm</small></div></div>
     <div><div class="k">Work logged</div><div class="v" id="lvWork">–</div></div>
@@ -503,6 +506,66 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   walletIn.addEventListener('keydown', e => e.stopPropagation());
   initBoard();
 
+  // ---------- his usual hours, learned from the last 7 days of real wheel stats ----------
+  // Hours are UTC on the wire and shown in each player's own time zone.
+  const STATS = 'https://api.squeekchain.com/v1/measurement/stats?range=7d';
+  const FALLBACK = { start: 21, end: 8, peak: 4 }; // UTC, as seen in Squeekchain's stats in Nov 2026
+  let usual = FALLBACK;
+
+  // the longest stretch of active hours (wrapping past midnight), bridging one-hour naps
+  function usualWindow(work) {
+    const max = Math.max(...work);
+    if (!max) return null;
+    const on = work.map(w => w >= max * .05);
+    if (on.every(Boolean)) return null;
+    const s0 = on.findIndex(v => !v);
+    let best = null, cur = null, gap = 0;
+    for (let i = 1; i <= 24; i++) {
+      const h = (s0 + i) % 24;
+      if (on[h]) { if (!cur) cur = { start: h, len: 0 }; cur.len += gap + 1; gap = 0; }
+      else if (cur && ++gap > 1) { if (!best || cur.len > best.len) best = cur; cur = null; gap = 0; }
+    }
+    if (cur && (!best || cur.len > best.len)) best = cur;
+    return best && { start: best.start, end: (best.start + best.len) % 24, peak: work.indexOf(max) };
+  }
+  async function loadUsual() {
+    try {
+      const r = await fetch(STATS, { cache: 'no-store' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      const work = Array(24).fill(0);
+      for (const day of (d.activity && d.activity.days) || [])
+        for (const b of day.buckets || []) work[Math.floor(b.startMinuteUtc / 60) % 24] += Number(b.workUnits) || 0;
+      usual = usualWindow(work) || usual;
+    } catch (e) { /* keep the last known schedule */ }
+    renderUsual();
+  }
+  function fmtHour(utcHour) {
+    const d = new Date(); d.setUTCHours(utcHour, 0, 0, 0);
+    return d.toLocaleTimeString([], d.getMinutes() ? { hour: 'numeric', minute: '2-digit' } : { hour: 'numeric' });
+  }
+  function inUsual(h) { return usual.start < usual.end ? h >= usual.start && h < usual.end : h >= usual.start || h < usual.end; }
+  function untilUsual() {
+    const now = new Date();
+    if (inUsual(now.getUTCHours())) return '';
+    const next = new Date(now); next.setUTCHours(usual.start, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+    const mins = Math.round((next - now) / 60000);
+    return mins >= 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
+  }
+  function usualLine() {
+    if (!usual) return '';
+    if (live.ok && live.running) return 'Squeektoshi is running right now, so every bank pays ×2.';
+    const wait = untilUsual();
+    return `Squeektoshi usually runs ${fmtHour(usual.start)}–${fmtHour(usual.end)} your time, busiest around ${fmtHour(usual.peak)}. ` +
+      (wait ? `That starts in about ${wait}.` : `That's now, so he may wake any minute.`) + ' Banks pay ×2 while he runs.';
+  }
+  function renderUsual() {
+    const el = $('usualTxt');
+    if (el) el.textContent = usual && !(live.ok && live.running) ? `Usually runs ${fmtHour(usual.start)}–${fmtHour(usual.end)}` : '';
+    document.querySelectorAll('.usualSlot').forEach(n => { n.textContent = usualLine(); });
+  }
+
   // ---------- live feed ----------
   let live = { ok: false, running: false, fresh: false, rpm: 0, speed: 0, work: 0, height: 0, progress: 0, round: '–' };
   const logEl = $('log');
@@ -571,7 +634,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     if (!live.ok) { pill.className = 'pill off'; txt.textContent = 'Feed offline'; }
     else if (!live.fresh) { pill.className = 'pill off'; txt.textContent = 'Stale reading'; }
     else if (live.running) { pill.className = 'pill run'; txt.textContent = 'Running'; }
-    else { pill.className = 'pill idle'; txt.textContent = 'Resting'; }
+    else { pill.className = 'pill idle'; txt.textContent = 'Asleep'; }
+    renderUsual();
     if (!live.ok) return;
     $('lvRpm').innerHTML = `${live.rpm.toFixed(1)} <small>rpm · ${(live.speed / 1000).toFixed(2)} m/s</small>`;
     $('lvWork').textContent = live.work.toLocaleString();
@@ -607,7 +671,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       <p><b>Bonus bet (optional):</b> when your run ends, will the real hamster be on his wheel?</p>
       <div class="calls" role="group" aria-label="Bonus bet">
         <button type="button" data-call="awake" aria-pressed="${call === 'awake'}" ${off}>Running<span>score ×${o.awake}</span></button>
-        <button type="button" data-call="asleep" aria-pressed="${call === 'asleep'}" ${off}>Resting<span>score ×${o.asleep}</span></button>
+        <button type="button" data-call="asleep" aria-pressed="${call === 'asleep'}" ${off}>Asleep<span>score ×${o.asleep}</span></button>
         <button type="button" data-call="none" aria-pressed="${call === 'none'}">No bet<span>score ×1</span></button>
       </div>
       <p>A wrong guess costs a quarter of your score.</p>
@@ -733,7 +797,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       </div>
       <div id="betSlot" style="width:100%">${betHtml()}</div>
       <button class="go" id="startBtn" type="button">Start run</button>
-      <p class="fine">Endless: it gets harder every 20 seconds. You have 3 hearts.</p>`);
+      <p class="fine">Endless: it gets harder every 20 seconds. You have 3 hearts.</p>
+      <p class="fine usualSlot">${usualLine()}</p>`);
     $('startBtn').onclick = start;
   }
   introCard();
@@ -747,7 +812,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     overlay.hidden = true;
     last = performance.now();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    if (call !== 'none') log(`You bet <b>${call === 'awake' ? 'running' : 'resting'}</b> at the buzzer (×${callOdds[call]})`);
+    if (call !== 'none') log(`You bet <b>${call === 'awake' ? 'running' : 'asleep'}</b> at the buzzer (×${callOdds[call]})`);
   }
 
   function togglePause() {
@@ -777,7 +842,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
           const right = (call === 'awake') === now.running;
           verdict = right ? 'win' : 'lose';
           factor = right ? callOdds[call] : 0.75;
-          note = `The real hamster was ${now.running ? 'running' : 'resting'}. ${right ? 'You called it.' : 'Wrong guess.'}`;
+          note = `The real hamster was ${now.running ? 'running' : 'asleep'}. ${right ? 'You called it.' : 'Wrong guess.'}`;
         }
       } catch (e) { verdict = 'void'; note = 'The feed was unreachable, so the bet was cancelled.'; }
     }
@@ -800,6 +865,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       </dl>
       ${note || isBest || postMsg ? `<p class="fine">${note}${isBest ? ' New best on this device!' : ''} ${postMsg}</p>` : ''}
       ${banks > 0 && score / banks < 15 ? '<p class="fine">Tip: wait until your cheeks hold 8 or more before heading home. 8 seeds pay 36, two trips of 4 pay only 20.</p>' : ''}
+      <p class="fine usualSlot">${usualLine()}</p>
       <div id="betSlot" style="width:100%">${betHtml()}</div>
       <button class="go" type="button" id="againBtn">Run again</button>`);
     $('againBtn').onclick = start; $('againBtn').focus();
@@ -967,7 +1033,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     // real hamster status, always on screen
     const st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
       : live.running ? ['Real hamster RUNNING · banks ×2', '#1d2a12', 'rgba(159,209,111,.95)']
-      : ['Real hamster resting · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
+      : [`Real hamster asleep${usual ? ` · usually wakes ${fmtHour(usual.start)}` : ''} · banks ×1`, '#f6ead7', 'rgba(20,13,9,.7)'];
     pillText(12, 78, st[0], st[1], st[2]);
   }
 
@@ -1241,5 +1307,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 
   poll();
   setInterval(poll, 8000);
+  loadUsual();
+  setInterval(loadUsual, 30 * 60 * 1000);
 })();
 </script>
