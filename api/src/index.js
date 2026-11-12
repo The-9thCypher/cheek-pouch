@@ -33,7 +33,7 @@ const DAILY_POOL = [
 const WEEKLY_POOL = [
   { id: 'pts3000', title: 'Bank 3,000 points this week', metric: 'score', goal: 3000 },
   { id: 'lvl7', title: 'Reach level 7', metric: 'level', goal: 7, run: true },
-  { id: 'full5', title: 'Bank five full 12-seed hauls', metric: 'fullHauls', goal: 5 },
+  { id: 'full5', title: 'Bank five hauls of 12+ seeds', metric: 'fullHauls', goal: 5 },
   { id: 'days4', title: 'Play on 4 different days', metric: 'newDay', goal: 4 },
   { id: 'awake1', title: 'Play a run while Squeektoshi is running', metric: 'awake', goal: 1 },
   { id: 'block1', title: 'Take the lead on a Squeekchain block', metric: 'blockLead', goal: 1 },

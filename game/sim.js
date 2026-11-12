@@ -20,6 +20,9 @@ const SIM = (() => {
   // input bits
   const LEFT = 1, RIGHT = 2, JUMP = 4;
 
+  // cheeks grow by 2 every 3 levels: 12 at L1-3, 14 at L4-6, 16 at L7-9...
+  const capAt = level => CAP + 2 * Math.floor((level - 1) / 3);
+
   function rng(seed) {
     let a = seed >>> 0;
     return () => {
@@ -58,7 +61,7 @@ const SIM = (() => {
       stats: { seeds: 0, golds: 0, maxHaul: 0, fullHauls: 0, pawsDodged: 0, owlsDodged: 0, powerups: 0, hits: 0, hops: 0, bossesBeaten: 0 },
       ev: [],
     };
-    const cap = () => (s.ham.stretch > 0 ? CAP_BIG : CAP);
+    const cap = () => capAt(s.level) + (s.ham.stretch > 0 ? CAP_BIG - CAP : 0);
     const emit = e => s.ev.push(e);
 
     function drop(kind, delay, idx, sub) {
@@ -104,7 +107,7 @@ const SIM = (() => {
       if (n > s.stats.maxHaul) s.stats.maxHaul = n;
       if (n >= CAP) s.stats.fullHauls++;
       s.ham.held = [];
-      emit({ type: 'bank', pts, n });
+      emit({ type: 'bank', pts, n, full: n >= cap() });
     }
 
     function step(bits) {
@@ -198,7 +201,7 @@ const SIM = (() => {
       }
 
       // hamster
-      let speed = 310 * (1 + Math.min(.35, (s.level - 1) * .04)) * (1 - 0.025 * h.held.length);
+      let speed = 310 * (1 + Math.min(.35, (s.level - 1) * .04)) * Math.max(.4, 1 - 0.025 * h.held.length);
       for (let i = s.puddles.length - 1; i >= 0; i--) {
         const p = s.puddles[i];
         p.life -= DT;
@@ -339,6 +342,6 @@ const SIM = (() => {
   function levelForXp(xp) { let L = 1; while (L < 99 && xpForLevel(L + 1) <= xp) L++; return L; }
   function unlocked(item, lvl, perks) { return item.perk ? !!(perks && perks[item.perk]) : lvl >= item.lvl; }
 
-  return { W, GROUND, BURROW_X, CAP, CAP_BIG, LEVEL_SECS, R, HZ, DT, FLOWERS, LEVEL_NEWS, POWERS, LEFT, RIGHT, JUMP, COSMETICS, xpForLevel, levelForXp, unlocked, rng, hashSeed, daySeed, goldPlan, create, replay };
+  return { W, GROUND, BURROW_X, CAP, CAP_BIG, LEVEL_SECS, R, HZ, DT, FLOWERS, LEVEL_NEWS, POWERS, LEFT, RIGHT, JUMP, COSMETICS, capAt, xpForLevel, levelForXp, unlocked, rng, hashSeed, daySeed, goldPlan, create, replay };
 })();
 /* SIM:END */

@@ -371,11 +371,12 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
             <li>Run left into the burrow to bank. <b>Bigger trips pay much more</b>.</li>
             <li>A hit spills <b>half</b> your cheeks onto the ground. Grab them back before they fade.</li>
             <li><b>Golden seeds</b> add 20. In Free play they fall when the real wheel logs work; in the Daily Burrow, yesterday's wheel work sets how many.</li>
-            <li><b>Power-ups</b>: a helmet blocks one hit, a magnet pulls seeds in, big cheeks hold 16.</li>
+            <li><b>Power-ups</b>: a helmet blocks one hit, a magnet pulls seeds in, big cheeks hold 4 more.</li>
+            <li>Your cheeks grow as you go: <b>+2 seeds every 3 levels</b> (12, then 14 at level 4, 16 at level 7…).</li>
             <li>In Free play, every bank pays <b>×2</b> while the real hamster runs.</li>
           </ul>
           <div class="payout">
-            <div>1 seed<b>1</b></div><div>4 seeds<b>10</b></div><div>8 seeds<b>36</b></div><div>12 seeds<b>78</b></div>
+            <div>1 seed<b>1</b></div><div>4 seeds<b>10</b></div><div>8 seeds<b>36</b></div><div>12 seeds<b>78</b></div><div>16 seeds<b>136</b></div>
           </div>
         </div>
         <div class="box">
@@ -1347,7 +1348,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     effects();
   }
   const POWER_NAME = { helmet: 'Helmet', magnet: 'Magnet', stretch: 'Big cheeks' };
-  const POWER_TIP = { helmet: 'Blocks the next hit', magnet: 'Pulls seeds in for 8 s', stretch: 'Hold 16 seeds for 15 s' };
+  const POWER_TIP = { helmet: 'Blocks the next hit', magnet: 'Pulls seeds in for 8 s', stretch: 'Hold 4 more seeds for 15 s' };
   // visual-only feel: shake, a split-second freeze on hits, dust, sparkles and the catch streak
   const fx = { shake: 0, freeze: 0, slow: 0, dance: 0 };
   let streak = { n: 0, show: 0 }, wasGround = true, wasFace = 1;
@@ -1379,9 +1380,9 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         const big = e.n >= 8;
         float(BURROW_X + 30, GROUND - 124, `+${e.pts}`, big ? '#ffe066' : '#f2c14e', big ? 46 : 34);
         if (big) {
-          confetti(BURROW_X + 40, GROUND - 40, e.n >= SIM.CAP ? 70 : 40);
+          confetti(BURROW_X + 40, GROUND - 40, e.full ? 70 : 40);
           fx.dance = .9;
-          if (!banner || banner.kind === 'bank') banner = { kind: 'bank', title: e.n >= SIM.CAP ? 'FULL POUCH!' : 'BANKED!', sub: `${e.n} seeds home · +${e.pts}`, life: 1.6 };
+          if (!banner || banner.kind === 'bank') banner = { kind: 'bank', title: e.full ? 'FULL POUCH!' : 'BANKED!', sub: `${e.n} seeds home · +${e.pts}`, life: 1.6 };
         }
         const el = $('hudScore'); el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
         for (let i = 0; i < (big ? 30 : 16); i++) parts.push({ x: BURROW_X, y: GROUND - 6, vx: (Math.random() - .5) * 200, vy: -140 - Math.random() * 200, life: .9, c: i % 3 ? '#f2c14e' : '#fff1a8', s: 3, star: big && i % 2 === 0 });
@@ -1390,7 +1391,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       else if (e.type === 'hit') { sfx.hit(); fx.shake = .3; fx.freeze = .09; streak.n = 0; float(e.x, e.y - 72, e.spill ? `${e.why}! dropped ${e.spill}` : `${e.why}!`, '#ec6a4f'); }
       else if (e.type === 'shield') { sfx.shield(); fx.shake = .15; sparkle(e.x, e.y - 44, 12, '#82cfe0'); float(e.x, e.y - 72, 'Helmet saved you!', '#82cfe0'); }
       else if (e.type === 'power') { sfx.power(); sparkle(e.x, e.y, 12, '#82cfe0'); float(e.x, e.y - 20, POWER_NAME[e.sub] + '!', '#82cfe0', 26); toast(`${POWER_NAME[e.sub]}: ${POWER_TIP[e.sub]}`, '#82cfe0'); }
-      else if (e.type === 'level') { banner = { title: `Level ${e.level}`, sub: LEVEL_NEWS[e.level] || 'Faster still', life: 2.8 }; sfx.level(); }
+      else if (e.type === 'level') {
+        banner = { title: `Level ${e.level}`, sub: LEVEL_NEWS[e.level] || 'Faster still', life: 2.8 }; sfx.level();
+        if (SIM.capAt(e.level) > SIM.capAt(e.level - 1)) { toast(`Bigger cheeks: you can now hold ${SIM.capAt(e.level)} seeds`, '#9fd16f'); sparkle(h.x, h.y - 30, 10, '#9fd16f'); }
+      }
       else if (e.type === 'warn') e.big ? sfx.bigWarn() : sfx.warn();
       else if (e.type === 'boss') {
         banner = { kind: 'boss', title: `Level ${e.level}: Boss cat!`, sub: 'Hop 3 big swipes for a seed jackpot', life: 3 };
