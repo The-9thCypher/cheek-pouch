@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: a burrow at dusk — live wheel strip on top, playfield, then a row of cards (board, missions, wardrobe).
+/* Layout: a burrow at dusk — playfield, then a row of cards (board, missions, wardrobe).
    Single committed look (soil + sunflower), so colors are set explicitly, no theme switch. */
 :root {
   --soil: #241912;
@@ -64,34 +64,6 @@ header.top .intro { flex: 1 1 420px; min-width: 0; }
 .who i { font-style: normal; color: var(--seed); }
 .chip { font-family: var(--mono); font-size: 12px; color: var(--seed); background: var(--soil); border: 1px solid var(--soil-3); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
 .go-sm { font-size: 1rem; padding: 6px 18px; box-shadow: 0 3px 0 #a2721d; }
-
-/* live strip */
-.live {
-  display: grid;
-  grid-template-columns: auto repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--soil-3);
-  border: 1px solid var(--soil-3);
-  border-radius: 14px;
-  overflow: hidden;
-}
-.live > div { background: var(--soil-2); padding: 10px 14px; min-width: 0; }
-.live .k { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.live .v { font-family: var(--mono); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.live .v small { font-size: 12px; color: var(--muted); font-weight: 400; }
-.pill {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-  padding: 6px 10px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap;
-}
-.pill i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.pill.run { color: var(--ok); }
-.pill.run i { animation: blink 1s infinite; }
-.pill.idle { color: var(--wheel); }
-.pill.off { color: var(--danger); }
-@keyframes blink { 50% { opacity: .25; } }
-.bar { height: 6px; background: var(--soil); border-radius: 3px; margin-top: 6px; overflow: hidden; }
-.bar > span { display: block; height: 100%; background: var(--wheel); width: 0; transition: width .6s; }
 
 /* main */
 .main { display: grid; gap: 16px; }
@@ -200,8 +172,6 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--wheel); outline
 .payout b { display: block; color: var(--seed); font-size: 15px; }
 .keys { font-family: var(--mono); font-size: 13px; color: var(--muted); }
 kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border: 1px solid var(--soil-3); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--cream); }
-.log { font-family: var(--mono); font-size: 12px; color: var(--muted); display: grid; gap: 4px; max-height: 120px; overflow: auto; }
-.log div b { color: var(--seed); font-weight: 600; }
 .src { font-size: 13px; color: var(--muted); margin: 0; }
 .src a { color: var(--wheel); }
 .src:empty { display: none; }
@@ -221,9 +191,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 .board .lv { color: var(--muted); }
 .board .sc { color: var(--seed); font-weight: 600; }
 .board li.empty { display: block; color: var(--muted); background: none; padding: 0; }
-.blockNow { background: var(--soil); border-radius: 10px; padding: 8px 10px; font-size: 14px; color: var(--muted); }
-.blockNow b { color: var(--cream); }
-.blockNow .gold { color: var(--seed); }
 .missions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .missions li { display: grid; gap: 4px; font-size: 14px; color: var(--cream); }
 .missions li .top { display: flex; justify-content: space-between; gap: 8px; }
@@ -249,10 +216,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 .inp:focus-visible { outline: 2px solid var(--wheel); outline-offset: 1px; }
 .small { border: 1px solid var(--soil-3); background: var(--soil-3); color: var(--cream); border-radius: 8px; padding: 6px 12px; font-family: var(--mono); font-size: 13px; white-space: nowrap; }
 
-@media (max-width: 900px) {
-  .live { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .live > .state { grid-column: 1 / -1; }
-}
 @media (max-width: 560px) {
   .account { flex-basis: 100%; justify-items: stretch; }
   .account .src { text-align: left; }
@@ -266,8 +229,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   .card > p:not(.fine) { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pill.run i, .score.pop { animation: none; }
-  .bar > span, .xpbar span { transition: none; }
+  .score.pop { animation: none; }
+  .xpbar span { transition: none; }
 }
 </style>
 
@@ -275,7 +238,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   <header class="top">
     <div class="intro">
       <h1>Cheek Pouch</h1>
-      <p class="tag">Stuff your cheeks with sunflower seeds and carry them home. The game follows <b>Squeektoshi, the real hamster</b> on Squeekchain: when he runs his wheel, it turns day and every bank pays double.</p>
+      <p class="tag">Stuff your cheeks with sunflower seeds and carry them home. Dodge the pebbles, the cat and the owl, race everyone on the Daily Burrow, and duel your friends.</p>
     </div>
     <div class="account" aria-label="Your account">
       <div class="acct-row">
@@ -287,21 +250,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       <p class="src" id="acctNote"></p>
     </div>
   </header>
-
-  <section class="live" aria-label="Live wheel feed">
-    <div class="state">
-      <div class="k">Real hamster</div>
-      <span class="pill off" id="pill"><i></i><span id="pillText">Connecting</span></span>
-    </div>
-    <div><div class="k">Wheel</div><div class="v" id="lvRpm">– <small>rpm</small></div></div>
-    <div><div class="k">Work logged</div><div class="v" id="lvWork">–</div></div>
-    <div><div class="k">Settled round</div><div class="v" id="lvRound">–</div></div>
-    <div>
-      <div class="k">Block <span id="lvHeight">–</span></div>
-      <div class="v" id="lvProg">–</div>
-      <div class="bar"><span id="lvBar"></span></div>
-    </div>
-  </section>
 
   <div class="main">
     <div class="stage">
@@ -333,10 +281,8 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         <div class="tabs" role="tablist" id="boardTabs">
           <button type="button" role="tab" data-board="daily" aria-selected="true">Today</button>
           <button type="button" role="tab" data-board="all" aria-selected="false">All time</button>
-          <button type="button" role="tab" data-board="blocks" aria-selected="false">Blocks</button>
           <button type="button" role="tab" data-board="duels" aria-selected="false">Duels</button>
         </div>
-        <div class="blockNow" id="blockNow" hidden></div>
         <ol class="board" id="board"><li class="empty">Loading the board…</li></ol>
         <p class="src" id="boardNote"></p>
       </div>
@@ -363,17 +309,17 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     </section>
 
     <details class="more">
-      <summary>Rules, levels and wheel log</summary>
+      <summary>Rules and levels</summary>
       <div class="cards">
         <div class="box">
           <h3>Rules</h3>
           <ul>
             <li>Run left into the burrow to bank. <b>Bigger trips pay much more</b>.</li>
             <li>A hit spills <b>half</b> your cheeks onto the ground. Grab them back before they fade.</li>
-            <li><b>Golden seeds</b> add 20. In Free play they fall when the real wheel logs work; in the Daily Burrow, yesterday's wheel work sets how many.</li>
+            <li><b>Golden seeds</b> add 20. The Daily Burrow and duels drop 3 to 8 of them, the same for everyone.</li>
             <li><b>Power-ups</b>: a helmet blocks one hit, a magnet pulls seeds in, big cheeks hold 4 more.</li>
             <li>Your cheeks grow as you go: <b>+2 seeds every 3 levels</b> (12, then 14 at level 4, 16 at level 7…).</li>
-            <li>In Free play, every bank pays <b>×2</b> while the real hamster runs.</li>
+            <li>In Free play, a <b>golden rush</b> starts about every minute: the wheel hamster wakes, golden seeds fall and banks pay <b>×2</b> for 12 seconds.</li>
           </ul>
           <div class="payout">
             <div>1 seed<b>1</b></div><div>4 seeds<b>10</b></div><div>8 seeds<b>36</b></div><div>12 seeds<b>78</b></div><div>16 seeds<b>136</b></div>
@@ -393,15 +339,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
           <h3>Competitions</h3>
           <ul>
             <li><b>Daily Burrow</b>: the same run for everyone, resetting at midnight UTC. Runs are checked by replaying your key presses. The top three keep a podium.</li>
-            <li><b>Block Champion</b>: the best Daily Burrow score set while a Squeekchain block is mined wins that block.</li>
             <li><b>Free play</b> is practice: it keeps your streak and counts toward run missions, but only verified Daily Burrow runs reach the boards and earn score XP.</li>
+            <li><b>Duels</b>: same secret seed, one try each, winner takes 150 XP. The weekly Duel Cup champion gets 500 XP and the Cup laurel.</li>
             <li><b>Streaks</b>: play on back-to-back days for bonus XP.</li>
           </ul>
-        </div>
-        <div class="box">
-          <h3>Wheel log</h3>
-          <div class="log" id="log"><div>Waiting for the first reading…</div></div>
-          <p class="src">Feed: <a href="https://squeekchain.com" target="_blank" rel="noopener">Squeekchain</a> public API, checked every 8 s.</p>
         </div>
       </div>
     </details>
@@ -415,7 +356,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 (() => {
   const { W, GROUND, BURROW_X, R, HZ, DT, FLOWERS, LEVEL_NEWS, LEFT, RIGHT, JUMP, COSMETICS } = SIM;
   const H = 480;
-  const SQUEEK = 'https://api.squeekchain.com/v1/status';
   const API_PROD = 'https://cheek-pouch-api.cheek-pouch-api.workers.dev';
   const SITE = 'https://cheek-pouch.live/';
   const cv = document.getElementById('cv');
@@ -530,101 +470,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   musicBtn.onclick = toggleMusic;
   renderMusic();
 
-  // ---------- live feed ----------
-  let live = { ok: false, running: false, fresh: false, rpm: 0, speed: 0, work: 0, height: 0, progress: 0, round: '–' };
-  const logEl = $('log');
-  let logStarted = false;
-  function log(html) {
-    if (!logStarted) { logEl.innerHTML = ''; logStarted = true; }
-    const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const d = document.createElement('div');
-    d.innerHTML = `${t} · ${html}`;
-    logEl.prepend(d);
-    while (logEl.children.length > 30) logEl.lastChild.remove();
-  }
-  async function readStatus() {
-    const ctrl = new AbortController();
-    const to = setTimeout(() => ctrl.abort(), 7000);
-    try {
-      const r = await fetch(SQUEEK, { cache: 'no-store', signal: ctrl.signal });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const d = await r.json();
-      const m = d.measurement || {}, b = d.builder || {}, p = b.projected || b.anchor || {};
-      const fresh = m.freshness === 'online';
-      const rpm = (Number(m.rpmMilli) || 0) / 1000;
-      return {
-        ok: true, fresh,
-        running: fresh && ((m.coreStatus && m.coreStatus !== 'IDLE') || rpm > 0),
-        rpm, speed: Number(m.speedMmPerSecond) || 0, work: Number(m.cumulativeWorkUnits) || 0, epoch: m.counterEpoch,
-        height: Number(p.blockHeight) || 0, progress: (Number(p.blockProgress) || 0) / 1e9,
-        round: (b.anchor && b.anchor.settledThroughRound) || p.settledThroughRound || '–',
-      };
-    } finally { clearTimeout(to); }
-  }
-  async function poll() {
-    try {
-      const next = await readStatus();
-      // a reply without block data keeps the last good block reading
-      if (!next.height && live.height) { next.height = live.height; next.progress = live.progress; next.round = live.round; }
-      if (live.ok) {
-        if (next.epoch === live.epoch && next.work > live.work) onWork(next.work - live.work);
-        if (live.height && next.height > live.height) onBlock(next.height);
-        if (next.running !== live.running) {
-          log(next.running ? '<b>Squeektoshi hopped on the wheel</b>' : 'Squeektoshi stepped off to rest');
-          if (state === 'play' && mode === 'classic') toast(next.running ? 'The real hamster is running! Banks pay ×2' : 'The real hamster went to rest. Banks back to ×1', next.running ? '#9fd16f' : '#82cfe0');
-        }
-      } else {
-        log(`Connected. ${next.running ? '<b>He is running</b>' : 'He is asleep'} at block ${next.height}.`);
-      }
-      live = next;
-    } catch (e) {
-      if (live.ok || !logStarted) log('Feed unreachable, retrying');
-      live = { ...live, ok: false, running: false, fresh: false };
-    }
-    renderLive();
-    if (state === 'ready' || state === 'over') renderModeBody();
-  }
-  function renderLive() {
-    const pill = $('pill'), txt = $('pillText');
-    if (!live.ok) { pill.className = 'pill off'; txt.textContent = 'Feed offline'; }
-    else if (!live.fresh) { pill.className = 'pill off'; txt.textContent = 'Stale reading'; }
-    else if (live.running) { pill.className = 'pill run'; txt.textContent = 'Running'; }
-    else { pill.className = 'pill idle'; txt.textContent = 'Asleep'; }
-    if (!live.ok) return;
-    $('lvRpm').innerHTML = `${live.rpm.toFixed(1)} <small>rpm · ${(live.speed / 1000).toFixed(2)} m/s</small>`;
-    $('lvWork').textContent = live.work.toLocaleString();
-    $('lvRound').textContent = '#' + live.round;
-    $('lvHeight').textContent = '#' + (live.height + 1);
-    $('lvProg').textContent = (live.progress * 100).toFixed(2) + '%';
-    $('lvBar').style.width = (live.progress * 100).toFixed(2) + '%';
-  }
-  function onWork(delta) {
-    log(`Real wheel logged <b>+${delta} work</b>`);
-    if (state === 'play' && mode === 'classic') {
-      const n = Math.min(3, Math.max(1, Math.ceil(delta / 5)));
-      game.dropGold(n);
-      toast(`Real wheel +${delta} work: golden seed${n > 1 ? 's' : ''} incoming!`, '#f2c14e');
-    }
-  }
-  function onBlock(h) {
-    log(`<b>Block #${h} completed</b> on Squeekchain`);
-    if (state === 'play' && mode === 'classic') { game.dropGold(5, 0); toast(`Block #${h} landed: golden shower!`, '#82cfe0'); }
-    // announce who won the block that just finished
-    if (walletMode) setTimeout(async () => {
-      try {
-        const d = await api('/blocks');
-        const w = (d.recent || []).find(b => b.block === h);
-        if (w) {
-          const mine = player && w.id === player.address;
-          const name = mine ? 'You' : (w.nick || w.address);
-          log(`Block #${h} won by <b>${esc(name)}</b> with ${w.score}`);
-          if (state === 'play') toast(`Block #${h} won by ${name} (${w.score})`, mine ? '#9fd16f' : '#f2c14e');
-          if (mine) sfx.level();
-        }
-        if (boardTab === 'blocks') renderBlocks(d);
-      } catch (e) {}
-    }, 2500);
-  }
+  // ---------- golden rush (Free play): every minute or so the wheel hamster wakes and banks pay ×2 ----------
+  const RUSH_FIRST = 40, RUSH_EVERY = 60, RUSH_LEN = 12;
+  const rushAt = t => t >= RUSH_FIRST && (t - RUSH_FIRST) % RUSH_EVERY < RUSH_LEN;
+  const rushNow = () => mode === 'classic' && (state === 'play' || state === 'paused') && rushAt(game.s.t);
 
   // ---------- account: wallet sign-in (free EIP-4361 signature, no transaction) ----------
   let walletMode = false, session = null, player = null;
@@ -661,7 +510,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     nickIn.hidden = !signedIn;
     if (signedIn) {
       signBtn.textContent = 'Sign out'; signBtn.className = 'small';
-      acctWho.innerHTML = (player.perks.crown ? '<i>♛</i> ' : '') + esc(shortAddr(player.address)) +
+      acctWho.innerHTML = esc(shortAddr(player.address)) +
         ` <span class="chip">Lv ${player.hamsterLevel}</span>` + (player.streak ? ` <span class="chip">🔥 ${player.streak}</span>` : '');
       acctNote.textContent = `Best ${player.bestScore} · ${player.runs} run${player.runs === 1 ? '' : 's'} saved`;
     } else if (window.ethereum && window.ethereum.request) {
@@ -710,7 +559,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
 
   // ---------- leaderboards ----------
   const boardEl = $('board'), boardNote = $('boardNote');
-  let boardTab = load('cheekpouch.board') || 'daily';
+  let boardTab = ['daily', 'all', 'duels'].includes(load('cheekpouch.board')) ? load('cheekpouch.board') : 'daily';
   function boardMsg(msg) { boardEl.innerHTML = ''; const li = document.createElement('li'); li.className = 'empty'; li.textContent = msg; boardEl.appendChild(li); }
   function boardRows(rows, scoreKey, levelKey) {
     boardEl.innerHTML = '';
@@ -720,7 +569,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = i + 1;
       const nm = document.createElement('span'); nm.className = 'nm';
       if (v.cup) { const c = document.createElement('i'); c.textContent = '🏆 '; c.title = "Last week's Duel Cup champion"; nm.appendChild(c); nm.classList.add('champ'); }
-      if (v.holder) { const c = document.createElement('i'); c.textContent = '♛ '; c.title = 'Squeek holder'; nm.appendChild(c); }
       nm.appendChild(document.createTextNode(v.nick || v.address));
       if (v.streak > 1) { const st = document.createElement('i'); st.textContent = ` 🔥${v.streak}`; st.title = `${v.streak}-day streak`; nm.appendChild(st); }
       nm.title = v.address;
@@ -730,24 +578,9 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       boardEl.appendChild(li);
     });
   }
-  function renderBlocks(d) {
-    const box = $('blockNow');
-    box.hidden = false;
-    const c = d.current;
-    if (!c) { box.textContent = 'Squeekchain did not answer. Try again in a moment.'; boardMsg(''); return; }
-    const lead = c.leader;
-    const mine = lead && player && lead.id === player.address;
-    box.innerHTML = `<b>Block #${c.block}</b> is being mined. ` + (lead
-      ? `Leader: <span class="gold">${esc(mine ? 'you' : lead.nick || lead.address)}</span> with <b>${lead.score}</b>. ${mine ? 'Hold on until it lands.' : 'Beat it to take the block.'}`
-      : 'No runs yet. The first saved run takes it.');
-    if (!d.recent.length) { boardMsg('No blocks won yet.'); return; }
-    boardRows(d.recent.map(b => ({ ...b, rank: b.block })), 'score');
-    [...boardEl.children].forEach((li, i) => { li.firstChild.textContent = '#' + d.recent[i].block; li.style.gridTemplateColumns = 'auto minmax(0,1fr) auto'; li.children[2].remove(); });
-  }
   async function loadBoard() {
     if (!walletMode) return;
     document.querySelectorAll('#boardTabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.board === boardTab));
-    $('blockNow').hidden = boardTab !== 'blocks';
     try {
       if (boardTab === 'daily') {
         const d = await loadDaily();
@@ -763,9 +596,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         if (!d.players.length) boardMsg('No duels won this week yet. Start one from the Duel tab!'); else boardRows(d.players, 'wins', 'record');
         boardNote.textContent = `Weekly Duel Cup: most duel wins by Monday 00:00 UTC (${fmtLeft(d.endsAt).replace('resets', 'ends')}). The champion gets ${d.prizeXp} XP, the Cup laurel and a 🏆 on every board.` +
           (d.champion ? ` Last week: ${d.champion.name} with ${d.champion.wins} win${d.champion.wins === 1 ? '' : 's'}.` : '');
-      } else {
-        renderBlocks(await api('/blocks'));
-        boardNote.textContent = 'Every Squeekchain block goes to the best Daily Burrow score set while it was mined.';
       }
     } catch (e) { boardMsg('The board could not be loaded right now.'); }
   }
@@ -880,7 +710,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   function hoursLeft(d) { const h = Math.max(0, Math.floor((d.expiresAt - Date.now() / 1000) / 3600)); return h >= 1 ? `${h} h left` : 'closing soon'; }
   function openRow(d) {
     const c = d.a;
-    return `<li><span>⚔ <b>${esc(nameOf(c))}</b>${c.holder ? ' ♛' : ''} · Lv ${c.hamsterLevel} · ${c.record} · ${d.played ? 'has played ✓' : 'not played yet'} · ${hoursLeft(d)}</span>` +
+    return `<li><span>⚔ <b>${esc(nameOf(c))}</b> · Lv ${c.hamsterLevel} · ${c.record} · ${d.played ? 'has played ✓' : 'not played yet'} · ${hoursLeft(d)}</span>` +
       `<button type="button" class="small" data-duel-play="${d.id}">Accept</button></li>`;
   }
   function duelBodyHtml() {
@@ -960,7 +790,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       const p = player, span = p.xpNextLevel - p.xpLevelStart;
       st.innerHTML = `<span><b>Level ${p.hamsterLevel}</b> · ${(p.xp - p.xpLevelStart).toLocaleString()}/${span.toLocaleString()} XP</span>
         <span>🔥 Streak <b>${p.streak}</b> day${p.streak === 1 ? '' : 's'} (best ${p.bestStreak})</span>
-        <span>⛏ Blocks won <b>${p.blocksWon}</b></span>
         <span>🏅 Daily podiums <b>${p.podiums}</b></span>
         <span>⚔ Duels <b>${p.duelWins}–${p.duelLosses}</b>${p.cups ? ` · 🏆 <b>${p.cups}</b> cup${p.cups === 1 ? '' : 's'}` : ''}</span>`;
       $('xpFill').style.width = Math.min(100, (p.xp - p.xpLevelStart) / span * 100) + '%';
@@ -970,10 +799,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     slots.innerHTML = Object.keys(names).map(slot => `<div class="slot"><span class="k">${names[slot]}</span><div class="items">` +
       COSMETICS[slot].map(c => {
         const open = player ? SIM.unlocked(c, lvl, perks) : c.lvl === 1;
-        const need = c.perk ? { crown: 'Hold 1+ Squeek', gold: 'Hold 10+ Squeeks', shades: 'Stake 1+ Squeek', scarf: 'Own a level 2+ Squeek', duel1: 'Win a duel', duel5: 'Win 5 duels', duel15: 'Win 15 duels', duel30: 'Win 30 duels', cup: 'Win a weekly Duel Cup' }[c.perk] : `Hamster level ${c.lvl}`;
+        const need = c.perk ? { duel1: 'Win a duel', duel5: 'Win 5 duels', duel15: 'Win 15 duels', duel30: 'Win 30 duels', cup: 'Win a weekly Duel Cup' }[c.perk] : `Hamster level ${c.lvl}`;
         return `<button type="button" data-slot="${slot}" data-item="${c.id}" aria-pressed="${equipNow()[slot] === c.id}" ${open && player ? '' : 'disabled'} title="${open ? c.name : 'Locked: ' + need}">${open ? '' : '🔒 '}${esc(c.name)}</button>`;
       }).join('') + '</div></div>').join('');
-    if (!note.textContent || !player) note.textContent = player ? '' : 'Squeek holders unlock the crown, golden fur, shades and scarf.';
+    if (!note.textContent || !player) note.textContent = player ? '' : 'Level up to unlock outfits. Duel wins and the Duel Cup unlock a few more.';
   }
   $('slots').addEventListener('click', async e => {
     const b = e.target.closest('[data-item]');
@@ -1048,12 +877,12 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       const d = dailyInfo, past = challengeDay();
       const g = ghostData && !(player && ghostData.id === player.address) ? ghostData : null;
       return `<p><b>Same seeds and pebbles for everyone ${past ? 'on ' + fmtDay(past) : 'today'}.</b> Your best run counts, checked by replaying your key presses.</p>
-        <p>Golden seeds: <span class="gold">${d.golds}</span>, set by Squeektoshi's ${Number(d.work).toLocaleString()} wheel passes the day before.</p>
+        <p>Golden seeds today: <span class="gold">${d.golds}</span>.</p>
         <p>${d.me ? `Your best today: <b>${d.me.score}</b> (#${d.me.rank}).` : ''} ${d.top[0] ? `Leader: <b>${esc(d.top[0].nick || d.top[0].address)}</b> with <b>${d.top[0].score}</b>.` : 'Nobody has played today yet.'}</p>
         ${g ? `<label class="check"><input type="checkbox" id="ghostBox" ${ghostOn ? 'checked' : ''}> Race ${esc(g.nick || g.address)}'s ghost (${g.score})</label>` : ''}
         ${past ? `<p>This is ${fmtDay(past)}'s run, so it's practice: it won't be saved.</p>` : session ? '' : '<p>Practice works signed out. <b>Sign in</b> to post your run to the board.</p>'}`;
     }
-    return `<p><b>Live from Squeekchain:</b> banks pay ×2 while Squeektoshi runs, and his real wheel work drops golden seeds.</p>
+    return `<p><b>Golden rush:</b> about every minute the wheel hamster wakes up, golden seeds fall and banks pay ×2 for 12 seconds.</p>
       <p>Free play is for fun and practice. It counts toward your streak and run missions; Daily Burrow runs reach the boards and earn score XP.</p>`;
   }
   function renderModeBody() {
@@ -1210,7 +1039,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
         } catch (e) { msg = e.code === 'run_rejected' ? e.message : 'This run could not be saved. Check your connection.'; }
       }
     } else msg = await postClaudeScore(final, secs);
-    log(`Run over, <b>${final}</b> points`);
     lastResult = { mode, day: run.day, score: final, level: s.level, secs, rank: res && res.daily ? res.daily.rank : null, practice: run.practice, duel: run.duel || null };
     state = 'over';
     if (res && res.levelUp) { sfx.level(); }
@@ -1226,7 +1054,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       xpHtml = `<div class="xp"><span><b>+${res.xpGained} XP</b>${res.streakXp ? ` (incl. +${res.streakXp} streak bonus)` : ''} · Hamster level ${p.hamsterLevel}${res.levelUp ? ' <b>LEVEL UP!</b>' : ''}</span>
         <div class="xpbar"><span style="width:${Math.min(100, (p.xp - p.xpLevelStart) / span * 100)}%"></span></div></div>`;
       if (res.daily) badges.push(`<span class="badge gold">#${res.daily.rank} today${res.daily.improved ? ', new daily best' : ''}</span>`);
-      if (res.block) badges.push(`<span class="badge${res.block.lead ? ' gold' : ''}">${res.block.lead ? `You lead block #${res.block.block}` : `Block #${res.block.block}: beat ${res.block.best}`}</span>`);
       if (res.streak > 1) badges.push(`<span class="badge">🔥 ${res.streak}-day streak</span>`);
       if (res.isBest) badges.push(`<span class="badge gold">New personal best</span>`);
       for (const m of res.missionsDone) badges.push(`<span class="badge gold">✓ ${esc(m.title)} +${m.xp} XP</span>`);
@@ -1286,7 +1113,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     const r = lastResult;
     return r.mode === 'daily'
       ? `I scored ${r.score} on the Cheek Pouch Daily Burrow (${fmtDay(r.day)}), level ${r.level}${r.rank ? `, #${r.rank} today` : ''}. Beat me 🐹`
-      : `I scored ${r.score} in Cheek Pouch, a hamster game run by Squeektoshi's real wheel on Squeekchain. Level ${r.level} 🐹`;
+      : `I scored ${r.score} in Cheek Pouch, reaching level ${r.level}. Beat me 🐹`;
   }
   function xIntent() { return `https://x.com/intent/post?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(lastResult.mode === 'daily' ? challengeUrl() : SITE)}`; }
   async function copyChallenge() {
@@ -1338,7 +1165,12 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   function tickOnce() {
     const bits = bitsNow();
     if (bits !== lastBits) { rec.push(game.s.tick + 1, bits); lastBits = bits; }
-    if (mode === 'classic') game.s.mult = live.ok && live.running ? 2 : 1;
+    if (mode === 'classic') {
+      const was = rushAt(game.s.t), now = rushAt(game.s.t + DT);
+      game.s.mult = now ? 2 : 1;
+      if (now && !was) { game.dropGold(4); toast('Golden rush! The wheel hamster woke up: banks pay ×2', '#f2c14e'); sfx.gold(); }
+      else if (was && !now) toast('Golden rush over. Banks back to ×1', '#82cfe0');
+    }
     game.step(bits);
     if (ghost && !ghost.g.s.over) {
       const inp = ghost.data.inputs;
@@ -1442,13 +1274,13 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     streak.show = Math.max(0, streak.show - dt);
     fx.shake = Math.max(0, fx.shake - dt);
     fx.slow = Math.max(0, fx.slow - dt); fx.dance = Math.max(0, fx.dance - dt);
-    if (!reduceMotion) wheelAngle += ((live.ok ? live.rpm : 0) / 60) * Math.PI * 2 * dt;
+    if (!reduceMotion && rushNow()) wheelAngle += 1.4 * Math.PI * 2 * dt;
   }
 
   // ---------- draw ----------
   const speck = Array.from({ length: 90 }, () => ({ x: Math.random() * W, y: GROUND + 12 + Math.random() * (H - GROUND - 12), r: 1 + Math.random() * 2.5 }));
   const stars = Array.from({ length: 50 }, () => ({ x: Math.random() * W, y: 60 + Math.random() * 230, r: Math.random() * 1.4 + .3, p: Math.random() * 6 }));
-  const day = () => mode === 'classic' && live.ok && live.running;
+  const day = () => rushNow();
   const lerp = (a, b, k) => a + (b - a) * k;
   let alpha = 1;
 
@@ -1562,9 +1394,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     let st;
     if (mode === 'daily') st = ['Daily Burrow · same run for everyone · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
     else if (mode === 'duel') st = ['Duel · one try · same seed as your rival', '#f6ead7', 'rgba(176,74,143,.85)'];
-    else st = !live.ok ? ['Real hamster: feed offline · banks ×1', '#f6ead7', 'rgba(236,106,79,.85)']
-      : live.running ? ['Real hamster RUNNING · banks ×2', '#1d2a12', 'rgba(159,209,111,.95)']
-      : ['Real hamster asleep · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
+    else st = rushNow() ? ['GOLDEN RUSH · banks ×2', '#1d2a12', 'rgba(242,193,78,.95)'] : ['Free play · banks ×1', '#f6ead7', 'rgba(20,13,9,.7)'];
     pillText(12, 78, st[0], st[1], st[2]);
     const h = s.ham;
     let px = 12;
@@ -1595,7 +1425,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   }
 
   function drawWheel(x, y, r) {
-    const run = live.ok && live.running;
+    const run = rushNow();
     ctx.save(); ctx.translate(x, y);
     ctx.strokeStyle = '#6b5440'; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-14, r + 26); ctx.lineTo(0, 0); ctx.lineTo(14, r + 26); ctx.stroke();
     ctx.rotate(wheelAngle);
@@ -1604,12 +1434,12 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; ctx.beginPath(); ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); ctx.lineTo(Math.cos(a) * (r - 8), Math.sin(a) * (r - 8)); ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
     ctx.restore();
-    drawSqueektoshi(x, y + r - 3, run);
+    drawWheelHamster(x, y + r - 3, run);
     ctx.fillStyle = day() ? '#1d3a42' : '#b7c7cd'; ctx.font = '600 11px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(!live.ok ? 'OFFLINE' : run ? `${live.rpm.toFixed(1)} RPM` : 'ASLEEP', x, y - r - 12);
+    if (run) ctx.fillText('GOLDEN RUSH', x, y - r - 12);
   }
-  // the real hamster inside the wheel: running when the feed says so, curled up asleep otherwise
-  function drawSqueektoshi(x, y, run) {
+  // the wheel hamster: running during a golden rush, curled up asleep otherwise
+  function drawWheelHamster(x, y, run) {
     const now = performance.now() / 1000;
     ctx.save(); ctx.translate(x, y); ctx.scale(.6, .6);
     if (run) {
@@ -2012,8 +1842,6 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
   requestAnimationFrame(frame);
 
   // ---------- boot ----------
-  poll();
-  setInterval(poll, 8000);
   renderWardrobe();
   if (window.claude && typeof window.claude.use === 'function') initClaudeBoard(window.claude);
   else initWallet();

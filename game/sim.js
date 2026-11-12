@@ -40,9 +40,9 @@ const SIM = (() => {
   }
   const daySeed = day => hashSeed('cheek-pouch:' + day);
 
-  // golden seeds for a Daily Burrow, set by Squeektoshi's real wheel work the day before
-  function goldPlan(day, work) {
-    const count = Math.max(2, Math.min(12, Math.round((Number(work) || 0) / 800)));
+  // golden seeds for a Daily Burrow or duel: 3 to 8, picked by the date so everyone gets the same
+  function goldPlan(day) {
+    const count = 3 + (hashSeed('golds:' + day) % 6);
     const r = rng(hashSeed('gold:' + day));
     const times = [];
     for (let i = 0; i < count; i++) times.push(Math.floor((8 + i * 14 + r() * 10) * HZ));
@@ -301,7 +301,7 @@ const SIM = (() => {
       }
     }
 
-    // Free play only: golden seeds from the real wheel arrive whenever Squeekchain says so
+    // Free play only: extra golden seeds (the golden rush)
     function dropGold(n, idx) { for (let i = 0; i < n; i++) drop('gold', i * 0.4, idx != null ? idx + i : null); }
 
     return { s, step, bankValue, cap, dropGold };
@@ -320,21 +320,21 @@ const SIM = (() => {
     return g.s;
   }
 
-  // wardrobe: unlocked by hamster level, real Squeek holdings or duel wins (perk)
+  // wardrobe: unlocked by hamster level, or by duel wins and the weekly Duel Cup (perk)
   const COSMETICS = {
     hat: [
       { id: 'none', name: 'No hat', lvl: 1 }, { id: 'party', name: 'Party hat', lvl: 2 }, { id: 'flower', name: 'Sunflower', lvl: 4 },
-      { id: 'beanie', name: 'Beanie', lvl: 6 }, { id: 'tophat', name: 'Top hat', lvl: 10 }, { id: 'crown', name: 'Holder crown', perk: 'crown' },
+      { id: 'beanie', name: 'Beanie', lvl: 6 }, { id: 'tophat', name: 'Top hat', lvl: 10 }, { id: 'crown', name: 'Crown', lvl: 12 },
       { id: 'bandana', name: 'Duelist bandana', perk: 'duel5' }, { id: 'laurel', name: 'Cup laurel', perk: 'cup' },
     ],
     fur: [
       { id: 'classic', name: 'Classic', lvl: 1 }, { id: 'cocoa', name: 'Cocoa', lvl: 3 }, { id: 'snow', name: 'Snow', lvl: 5 },
-      { id: 'grey', name: 'Grey', lvl: 8 }, { id: 'golden', name: 'Golden', perk: 'gold' },
+      { id: 'grey', name: 'Grey', lvl: 8 }, { id: 'golden', name: 'Golden', lvl: 15 },
       { id: 'ember', name: 'Ember', perk: 'duel30' },
     ],
     extra: [
       { id: 'none', name: 'Nothing', lvl: 1 }, { id: 'bowtie', name: 'Bow tie', lvl: 7 },
-      { id: 'shades', name: 'Staker shades', perk: 'shades' }, { id: 'scarf', name: 'Merge scarf', perk: 'scarf' },
+      { id: 'shades', name: 'Shades', lvl: 9 }, { id: 'scarf', name: 'Scarf', lvl: 11 },
       { id: 'medal', name: 'Duel medal', perk: 'duel1' }, { id: 'belt', name: 'Champion belt', perk: 'duel15' },
     ],
   };

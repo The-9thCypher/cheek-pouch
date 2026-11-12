@@ -13,8 +13,6 @@ const ALLOWED_ORIGINS = new Set([
 const SITE = 'cheek-pouch.live';
 const NONCE_TTL = 10 * 60;            // seconds
 const SESSION_TTL = 30 * 24 * 3600;   // seconds
-const HOLDINGS_TTL = 60 * 60;         // refresh Squeek holdings at most hourly
-const STATUS_TTL = 30 * 1000;         // ms; Squeekchain status cache
 const MAX_INPUTS = 40000;             // flat [tick, bits] entries in one replay
 const MAX_OPEN_NONCES = 5;            // unexpired sign-in requests per address
 const MAX_RUNS_PER_MINUTE = 6;        // run starts per player per minute
@@ -35,8 +33,8 @@ const WEEKLY_POOL = [
   { id: 'lvl7', title: 'Reach level 7', metric: 'level', goal: 7, run: true },
   { id: 'full5', title: 'Bank five hauls of 12+ seeds', metric: 'fullHauls', goal: 5 },
   { id: 'days4', title: 'Play on 4 different days', metric: 'newDay', goal: 4 },
-  { id: 'awake1', title: 'Play a run while Squeektoshi is running', metric: 'awake', goal: 1 },
-  { id: 'block1', title: 'Take the lead on a Squeekchain block', metric: 'blockLead', goal: 1 },
+  { id: 'boss3', title: 'Beat 3 boss cats', metric: 'bossesBeaten', goal: 3 },
+  { id: 'lvl10', title: 'Reach level 10', metric: 'level', goal: 10, run: true },
   { id: 'owl10', title: 'Dodge 10 owl swoops', metric: 'owlsDodged', goal: 10 },
 ];
 const DAILY_XP = 100, WEEKLY_XP = 400;
@@ -72,51 +70,18 @@ function json(req, body, status = 200) {
 const fail = (req, status, error, message) => json(req, { error, message }, status);
 async function body(req) { try { return await req.json(); } catch { return {}; } }
 
-// ---------- Squeekchain ----------
-let statusCache = { at: 0, value: null };
-async function squeekStatus() {
-  if (Date.now() - statusCache.at < STATUS_TTL && statusCache.value) return statusCache.value;
-  try {
-    const r = await fetch('https://api.squeekchain.com/v1/status', { headers: { Accept: 'application/json' } });
-    if (!r.ok) throw new Error('status ' + r.status);
-    const d = await r.json();
-    const m = d.measurement || {}, b = d.builder || {}, p = b.projected || b.anchor || {};
-    const height = Number(p.blockHeight) || 0;
-    if (!height) throw new Error('no height');
-    const fresh = m.freshness === 'online';
-    const value = { height, block: height + 1, running: fresh && ((m.coreStatus && m.coreStatus !== 'IDLE') || Number(m.rpmMilli) > 0) };
-    statusCache = { at: Date.now(), value };
-    return value;
-  } catch (e) {
-    return statusCache.value; // last good reading, or null
-  }
-}
-
-// the day's golden-seed plan comes from Squeektoshi's wheel work the day before, fixed once known
-async function dailyInfo(env, day) {
-  const row = await env.DB.prepare('SELECT work FROM daily_info WHERE day = ?').bind(day).first();
-  let work = row ? row.work : null;
-  if (work === null) {
-    try {
-      const r = await fetch('https://api.squeekchain.com/v1/measurement/stats?range=7d', { headers: { Accept: 'application/json' } });
-      if (!r.ok) throw new Error('stats ' + r.status);
-      const d = await r.json();
-      const prev = ((d.activity && d.activity.days) || []).find(x => x.date === addDays(day, -1));
-      work = prev ? Number(prev.observedWorkUnits) || 0 : 0;
-      await env.DB.prepare('INSERT OR IGNORE INTO daily_info (day, work) VALUES (?, ?)').bind(day, work).run();
-    } catch (e) {
-      work = 0; // not stored, so the real figure is used once Squeekchain answers
-    }
-  }
-  const plan = SIM.goldPlan(day, work);
-  return { day, seed: SIM.daySeed(day), work, golds: plan.count, goldTicks: plan.ticks };
+// ---------- Daily Burrow ----------
+// everyone gets the same seed and golden-seed plan for the day
+function dailyInfo(day) {
+  const plan = SIM.goldPlan(day);
+  return { day, seed: SIM.daySeed(day), golds: plan.count, goldTicks: plan.ticks };
 }
 
 // ---------- players ----------
 const defaultEquip = { hat: 'none', fur: 'classic', extra: 'none' };
 function perksOf(p) {
   const w = p.duel_wins || 0;
-  return { crown: p.squeeks >= 1, shades: p.staked >= 1, scarf: p.top_level >= 2, gold: p.squeeks >= 10, duel1: w >= 1, duel5: w >= 5, duel15: w >= 15, duel30: w >= 30, cup: (p.cups || 0) >= 1 };
+  return { duel1: w >= 1, duel5: w >= 5, duel15: w >= 15, duel30: w >= 30, cup: (p.cups || 0) >= 1 };
 }
 function equipOf(p) {
   let e = {};
@@ -128,55 +93,27 @@ function equipOf(p) {
   }
   return out;
 }
-async function extras(env, address) {
-  const st = await squeekStatus();
-  const won = st
-    ? await env.DB.prepare('SELECT COUNT(*) AS n FROM block_best WHERE address = ? AND block <= ?').bind(address, st.height).first()
-    : { n: 0 };
-  const podiums = await env.DB.prepare(
+async function podiums(env, address) {
+  return (await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM daily_best d WHERE d.address = ? AND d.day < ?
        AND (SELECT COUNT(*) FROM daily_best d2 WHERE d2.day = d.day AND d2.score > d.score) < 3`
-  ).bind(address, today()).first();
-  return { blocksWon: won.n, podiums: podiums.n };
+  ).bind(address, today()).first()).n;
 }
 async function publicPlayer(env, p) {
   if (!p) return null;
   const lvl = SIM.levelForXp(p.xp || 0);
-  const ex = await extras(env, p.address);
   return {
     address: p.address, nick: p.nick || null,
     bestScore: p.best_score, bestLevel: p.best_level, bestSecs: p.best_secs,
     runs: p.runs, totalScore: p.total_score,
-    squeeks: p.squeeks, staked: p.staked, topLevel: p.top_level,
     perks: perksOf(p),
     xp: p.xp || 0, hamsterLevel: lvl, xpLevelStart: SIM.xpForLevel(lvl), xpNextLevel: SIM.xpForLevel(lvl + 1),
     streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, bestStreak: p.best_streak,
-    equip: equipOf(p), blocksWon: ex.blocksWon, podiums: ex.podiums, duelWins: p.duel_wins || 0, duelLosses: p.duel_losses || 0, cups: p.cups || 0,
+    equip: equipOf(p), podiums: await podiums(env, p.address), duelWins: p.duel_wins || 0, duelLosses: p.duel_losses || 0, cups: p.cups || 0,
   };
 }
 const getPlayer = (env, address) => env.DB.prepare('SELECT * FROM players WHERE address = ?').bind(address).first();
 
-async function refreshHoldings(env, address, force = false) {
-  const p = await getPlayer(env, address);
-  if (p && !force && nowS() - p.holdings_at < HOLDINGS_TTL) return p;
-  try {
-    const base = `https://api.squeekchain.com/v1/accounts/${address}`;
-    let url = base, pages = 0, counts = null, top = 0;
-    while (url && pages < 4) {
-      const r = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!r.ok) throw new Error('squeekchain ' + r.status);
-      const d = await r.json();
-      counts = counts || d.tokenCounts || {};
-      for (const t of d.tokens || []) top = Math.max(top, Number(t.level) || 0);
-      pages++;
-      url = d.nextCursor ? `${base}?cursor=${encodeURIComponent(d.nextCursor)}` : null;
-    }
-    const staked = Number(counts.staking) || 0, held = Number(counts.wallet) || 0;
-    await env.DB.prepare('UPDATE players SET squeeks = ?, staked = ?, top_level = ?, holdings_at = ? WHERE address = ?')
-      .bind(held + staked, staked, top, nowS(), address).run();
-  } catch (e) { /* keep the last known holdings; perks are cosmetic */ }
-  return getPlayer(env, address);
-}
 
 // ---------- auth ----------
 async function sessionAddress(req, env) {
@@ -218,7 +155,7 @@ async function verify(req, env) {
     env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(nowS()),
     env.DB.prepare('INSERT INTO sessions (token_hash, address, expires_at) VALUES (?, ?, ?)').bind(await sha256(token), address, nowS() + SESSION_TTL),
   ]);
-  return json(req, { token, player: await publicPlayer(env, await refreshHoldings(env, address, true)) });
+  return json(req, { token, player: await publicPlayer(env, await getPlayer(env, address)) });
 }
 async function logout(req, env) {
   const m = (req.headers.get('Authorization') || '').match(/^Bearer ([0-9a-f]{64})$/);
@@ -228,7 +165,7 @@ async function logout(req, env) {
 
 // ---------- profile ----------
 async function me(req, env, address) {
-  return json(req, { player: await publicPlayer(env, await refreshHoldings(env, address)) });
+  return json(req, { player: await publicPlayer(env, await getPlayer(env, address)) });
 }
 async function patchMe(req, env, address) {
   const b = await body(req);
@@ -313,10 +250,10 @@ async function startRun(req, env, address) {
   if (mode === 'duel') return startDuelRun(req, env, address, String(b.duel || ''));
   const id = randomHex(16), day = today();
   // the daily plan is fixed when the run starts, so the replay uses exactly what the player saw
-  const info = mode === 'daily' ? await dailyInfo(env, day) : null;
+  const info = mode === 'daily' ? dailyInfo(day) : null;
   await env.DB.batch([
     env.DB.prepare('DELETE FROM runs WHERE started_at < ?').bind(nowS() - 24 * 3600),
-    env.DB.prepare('INSERT INTO runs (id, address, started_at, mode, day, work) VALUES (?, ?, ?, ?, ?, ?)').bind(id, address, nowS(), mode, day, info ? info.work : null),
+    env.DB.prepare('INSERT INTO runs (id, address, started_at, mode, day, work) VALUES (?, ?, ?, ?, ?, ?)').bind(id, address, nowS(), mode, day, null),
   ]);
   return json(req, { runId: id, mode, day, ...(info || {}) });
 }
@@ -357,8 +294,7 @@ async function finishRun(req, env, address, id) {
     inputs = b.inputs;
     if (!Number.isInteger(ticks) || ticks < 1 || !validInputs(inputs, ticks)) return reject('That run could not be read, so it was not saved.');
     if (ticks / SIM.HZ > secs * 1.1 + 5) return reject('That run was faster than real time, so it was not saved.');
-    const work = run.work != null ? run.work : (await dailyInfo(env, run.day)).work;
-    const plan = SIM.goldPlan(run.day, work);
+    const plan = SIM.goldPlan(run.day);
     const s = SIM.replay({ seed: duel ? duel.seed : SIM.daySeed(run.day), goldTicks: plan.ticks, mult: 1 }, inputs, ticks);
     if (!s.over || s.tick !== ticks || s.score !== score || s.level !== level) return reject('That run did not replay the same way, so it was not saved.');
     stats = s.stats;
@@ -368,17 +304,6 @@ async function finishRun(req, env, address, id) {
   const day = today(), yesterday = addDays(day, -1);
   const newDay = p.last_play_day !== day;
   const streak = !newDay ? p.streak : p.last_play_day === yesterday ? p.streak + 1 : 1;
-
-  // Block Champion: the best score set while the current Squeekchain block is mined
-  const st = await squeekStatus();
-  let block = null;
-  if (st && verified) {
-    const cur = await env.DB.prepare('SELECT address, score FROM block_best WHERE block = ?').bind(st.block).first();
-    const lead = !cur || score > cur.score;
-    if (lead) await env.DB.prepare('INSERT INTO block_best (block, address, score, at) VALUES (?, ?, ?, ?) ON CONFLICT (block) DO UPDATE SET address = excluded.address, score = excluded.score, at = excluded.at')
-      .bind(st.block, address, score, nowS()).run();
-    block = { block: st.block, lead, took: lead && (!cur || cur.address !== address), best: lead ? score : cur.score };
-  }
 
   // a duel result is saved before XP, so the second finisher settles the duel and both prizes at once
   let duelRes = null;
@@ -392,7 +317,6 @@ async function finishRun(req, env, address, id) {
 
   const metrics = {
     ...stats, score: replayed ? score : 0, level: replayed ? level : 0, runs: 1, daily: verified ? 1 : 0, newDay: newDay ? 1 : 0,
-    awake: st && st.running ? 1 : 0, blockLead: block && block.took ? 1 : 0,
   };
   const ms = await applyMissions(env, address, day, metrics);
   const streakXp = newDay ? Math.min(10 * streak, 100) : 0;
@@ -428,10 +352,10 @@ async function finishRun(req, env, address, id) {
     daily.rank = r.rank;
   }
 
-  const fresh = await refreshHoldings(env, address);
+  const fresh = await getPlayer(env, address);
   const rank = await env.DB.prepare('SELECT COUNT(*) + 1 AS rank FROM players WHERE best_score > ?').bind(fresh.best_score).first();
   return json(req, {
-    player: await publicPlayer(env, fresh), isBest, rank: rank.rank, daily, block,
+    player: await publicPlayer(env, fresh), isBest, rank: rank.rank, daily,
     xpGained, streakXp, levelUp: lvlAfter > lvlBefore ? lvlAfter : null, levelFrom: lvlBefore, missionsDone: ms.completed, streak, verified,
     duel: duelRes,
   });
@@ -457,11 +381,11 @@ async function createDuel(req, env, address) {
   if (live.n >= MAX_LIVE_DUELS) return fail(req, 429, 'too_many_duels', 'You have a lot of duels going. Finish some first.');
   const open = await env.DB.prepare('SELECT COUNT(*) AS n FROM duels WHERE a = ? AND b IS NULL AND resolved_at IS NULL AND expires_at > ?').bind(address, nowS()).first();
   if (!rival && open.n >= MAX_OPEN_DUELS) return fail(req, 429, 'too_many_duels', `You already have ${MAX_OPEN_DUELS} duels nobody has accepted. Share those first.`);
-  const day = today(), info = await dailyInfo(env, day);
+  const day = today();
   const id = randomHex(5), seed = crypto.getRandomValues(new Uint32Array(1))[0];
   const pub = !rival && b.public !== false ? 1 : 0; // rematches are private; new duels are listed unless asked not to
   await env.DB.prepare('INSERT INTO duels (id, seed, day, work, a, b, created_at, expires_at, public) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, seed, day, info.work, address, rival, nowS(), nowS() + DUEL_TTL, pub).run();
+    .bind(id, seed, day, 0, address, rival, nowS(), nowS() + DUEL_TTL, pub).run();
   return json(req, { duel: await duelView(env, await getDuel(env, id), address) });
 }
 
@@ -499,13 +423,13 @@ async function resolveDuel(env, d) {
 
 async function duelView(env, d, me) {
   const ids = [d.a, d.b].filter(Boolean), who = {};
-  const { results } = await env.DB.prepare(`SELECT address, nick, xp, squeeks FROM players WHERE address IN (${ids.map(() => '?').join(', ')})`).bind(...ids).all();
+  const { results } = await env.DB.prepare(`SELECT address, nick, xp FROM players WHERE address IN (${ids.map(() => '?').join(', ')})`).bind(...ids).all();
   for (const r of results) who[r.address] = r;
   const side = k => {
     const addr = d[k];
     if (!addr) return null;
     const p = who[addr] || {}, show = !!d.resolved_at || !!me && (me === d.a || me === d.b);
-    return { id: addr, address: short(addr), nick: p.nick || null, holder: p.squeeks > 0, hamsterLevel: SIM.levelForXp(p.xp || 0),
+    return { id: addr, address: short(addr), nick: p.nick || null, hamsterLevel: SIM.levelForXp(p.xp || 0),
       started: !!d[k + '_run'], done: d[k + '_score'] != null, score: show ? d[k + '_score'] : null, level: show ? d[k + '_level'] : null, prize: d['prize_' + k] };
   };
   return {
@@ -519,7 +443,7 @@ async function duelView(env, d, me) {
 const weekStartS = day => Math.floor(Date.parse(weekStart(day) + 'T00:00:00Z') / 1000);
 async function cupStandings(env, from, to, limit) {
   return (await env.DB.prepare(
-    `SELECT d.winner AS address, COUNT(*) AS wins, MAX(d.resolved_at) AS last, p.nick, p.squeeks, p.streak, p.last_play_day, p.xp, p.duel_wins, p.duel_losses
+    `SELECT d.winner AS address, COUNT(*) AS wins, MAX(d.resolved_at) AS last, p.nick, p.streak, p.last_play_day, p.xp, p.duel_wins, p.duel_losses
      FROM duels d JOIN players p ON p.address = d.winner
      WHERE d.resolved_at >= ? AND d.resolved_at < ? AND d.winner IS NOT NULL AND d.winner != 'tie'
      GROUP BY d.winner ORDER BY wins DESC, last ASC LIMIT ?`
@@ -547,14 +471,14 @@ async function duelGet(req, env, address, id) {
 // the lobby: public duels nobody has accepted yet; scores stay hidden so nobody can cherry-pick a weak one
 async function openDuels(req, env, address) {
   const { results } = await env.DB.prepare(
-    `SELECT d.id, d.a, d.a_score IS NOT NULL AS played, d.expires_at, p.nick, p.xp, p.squeeks, p.duel_wins, p.duel_losses
+    `SELECT d.id, d.a, d.a_score IS NOT NULL AS played, d.expires_at, p.nick, p.xp, p.duel_wins, p.duel_losses
      FROM duels d JOIN players p ON p.address = d.a
      WHERE d.public = 1 AND d.b IS NULL AND d.resolved_at IS NULL AND d.expires_at > ? AND d.a != ?
      ORDER BY played DESC, d.created_at DESC LIMIT 12`
   ).bind(nowS(), address || '').all();
   return json(req, { duels: results.map(r => ({
     id: r.id, status: 'open', you: null, expiresAt: r.expires_at, played: !!r.played,
-    a: { id: r.a, address: short(r.a), nick: r.nick || null, holder: r.squeeks > 0, hamsterLevel: SIM.levelForXp(r.xp || 0), record: `${r.duel_wins}–${r.duel_losses}` },
+    a: { id: r.a, address: short(r.a), nick: r.nick || null, hamsterLevel: SIM.levelForXp(r.xp || 0), record: `${r.duel_wins}–${r.duel_losses}` },
     b: null,
   })) });
 }
@@ -585,11 +509,11 @@ async function startDuelRun(req, env, address, duelId) {
   const rival = d[o + '_score'] != null
     ? { id: d[o], address: short(d[o]), nick: (await getPlayer(env, d[o]) || {}).nick || null, score: d[o + '_score'], level: d[o + '_level'], ticks: d[o + '_ticks'], inputs: JSON.parse(d[o + '_inputs']) }
     : null;
-  return json(req, { runId: id, mode: 'duel', duel: d.id, day: d.day, seed: d.seed, goldTicks: SIM.goldPlan(d.day, d.work).ticks, rival });
+  return json(req, { runId: id, mode: 'duel', duel: d.id, day: d.day, seed: d.seed, goldTicks: SIM.goldPlan(d.day).ticks, rival });
 }
 
 // ---------- boards ----------
-const boardRow = (p, i, champ) => ({ rank: i + 1, id: p.address, cup: !!champ && p.address === champ, address: short(p.address), nick: p.nick || null, holder: p.squeeks > 0, streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, hamsterLevel: SIM.levelForXp(p.xp || 0) });
+const boardRow = (p, i, champ) => ({ rank: i + 1, id: p.address, cup: !!champ && p.address === champ, address: short(p.address), nick: p.nick || null, streak: p.last_play_day && p.last_play_day >= addDays(today(), -1) ? p.streak : 0, hamsterLevel: SIM.levelForXp(p.xp || 0) });
 
 async function leaderboard(req, env) {
   const champ = await cupChampion(env);
@@ -604,7 +528,7 @@ async function leaderboard(req, env) {
     });
   }
   const { results } = await env.DB.prepare(
-    'SELECT address, nick, best_score, best_level, squeeks, streak, last_play_day, xp FROM players WHERE best_score > 0 ORDER BY best_score DESC, last_run_at ASC LIMIT 20'
+    'SELECT address, nick, best_score, best_level, streak, last_play_day, xp FROM players WHERE best_score > 0 ORDER BY best_score DESC, last_run_at ASC LIMIT 20'
   ).all();
   return json(req, { players: results.map((p, i) => ({ ...boardRow(p, i, champ.address), bestScore: p.best_score, bestLevel: p.best_level })) });
 }
@@ -613,9 +537,9 @@ async function daily(req, env, address) {
   const url = new URL(req.url);
   const day = /^\d{4}-\d{2}-\d{2}$/.test(url.searchParams.get('day') || '') ? url.searchParams.get('day') : today();
   if (day > today() || day < addDays(today(), -7)) return fail(req, 400, 'bad_day', 'Daily runs are kept for 7 days.');
-  const info = await dailyInfo(env, day), champ = await cupChampion(env);
+  const info = dailyInfo(day), champ = await cupChampion(env);
   const { results } = await env.DB.prepare(
-    `SELECT d.address, d.score, d.level, p.nick, p.squeeks, p.streak, p.last_play_day, p.xp FROM daily_best d JOIN players p ON p.address = d.address
+    `SELECT d.address, d.score, d.level, p.nick, p.streak, p.last_play_day, p.xp FROM daily_best d JOIN players p ON p.address = d.address
      WHERE d.day = ? ORDER BY d.score DESC, d.at ASC LIMIT 20`
   ).bind(day).all();
   let mine = null;
@@ -637,19 +561,6 @@ async function ghost(req, env) {
   return json(req, { ghost: { id: g.address, address: short(g.address), nick: g.nick || null, score: g.score, level: g.level, ticks: g.ticks, inputs: JSON.parse(g.inputs) } });
 }
 
-async function blocks(req, env) {
-  const st = await squeekStatus();
-  if (!st) return json(req, { current: null, recent: [] });
-  const cur = await env.DB.prepare(
-    'SELECT b.block, b.address, b.score, p.nick, p.squeeks FROM block_best b JOIN players p ON p.address = b.address WHERE b.block = ?'
-  ).bind(st.block).first();
-  const { results } = await env.DB.prepare(
-    'SELECT b.block, b.address, b.score, p.nick, p.squeeks FROM block_best b JOIN players p ON p.address = b.address WHERE b.block <= ? ORDER BY b.block DESC LIMIT 6'
-  ).bind(st.height).all();
-  const row = b => b && { block: b.block, id: b.address, address: short(b.address), nick: b.nick || null, score: b.score, holder: b.squeeks > 0 };
-  return json(req, { current: { block: st.block, height: st.height, running: st.running, leader: row(cur) }, recent: results.map(row) });
-}
-
 export default {
   async fetch(req, env) {
     devOrigin = env.DEV_ORIGIN || null;
@@ -658,7 +569,6 @@ export default {
     try {
       if (req.method === 'GET' && path === '/') return json(req, { ok: true, service: 'cheek-pouch-api' });
       if (req.method === 'GET' && path === '/leaderboard') return leaderboard(req, env);
-      if (req.method === 'GET' && path === '/blocks') return blocks(req, env);
       if (req.method === 'GET' && path === '/daily/ghost') return ghost(req, env);
       if (req.method === 'POST' && path === '/auth/nonce') return nonce(req, env);
       if (req.method === 'POST' && path === '/auth/verify') return verify(req, env);

@@ -17,14 +17,13 @@ SITE_URL = "https://cheek-pouch.live/"
 
 ROOT = Path(__file__).parent
 TITLE = "Cheek Pouch"
-DESCRIPTION = "An endless hamster arcade game run by a real hamster's wheel on Squeekchain."
+DESCRIPTION = "An endless hamster arcade game with daily races, duels and a boss cat. Free in your browser."
 COVER = SITE_URL + "art/cheek-pouch-cover.png"
 
 HEAD = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{TITLE}</title>
 <meta name="description" content="{DESCRIPTION}">
-<meta name="squeekchain-project" content="430e9294-1c8e-4e18-aacc-e1dab9dd0462">
 <link rel="icon" type="image/png" href="art/cheek-pouch-icon.png">
 <link rel="apple-touch-icon" href="art/cheek-pouch-icon.png">
 <meta property="og:type" content="website">
