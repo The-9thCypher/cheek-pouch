@@ -459,8 +459,9 @@ async function createDuel(req, env, address) {
   if (!rival && open.n >= MAX_OPEN_DUELS) return fail(req, 429, 'too_many_duels', `You already have ${MAX_OPEN_DUELS} duels nobody has accepted. Share those first.`);
   const day = today(), info = await dailyInfo(env, day);
   const id = randomHex(5), seed = crypto.getRandomValues(new Uint32Array(1))[0];
-  await env.DB.prepare('INSERT INTO duels (id, seed, day, work, a, b, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .bind(id, seed, day, info.work, address, rival, nowS(), nowS() + DUEL_TTL).run();
+  const pub = !rival && b.public !== false ? 1 : 0; // rematches are private; new duels are listed unless asked not to
+  await env.DB.prepare('INSERT INTO duels (id, seed, day, work, a, b, created_at, expires_at, public) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .bind(id, seed, day, info.work, address, rival, nowS(), nowS() + DUEL_TTL, pub).run();
   return json(req, { duel: await duelView(env, await getDuel(env, id), address) });
 }
 
@@ -503,12 +504,12 @@ async function duelView(env, d, me) {
   const side = k => {
     const addr = d[k];
     if (!addr) return null;
-    const p = who[addr] || {};
+    const p = who[addr] || {}, show = !!d.resolved_at || !!me && (me === d.a || me === d.b);
     return { id: addr, address: short(addr), nick: p.nick || null, holder: p.squeeks > 0, hamsterLevel: SIM.levelForXp(p.xp || 0),
-      started: !!d[k + '_run'], done: d[k + '_score'] != null, score: d[k + '_score'], level: d[k + '_level'], prize: d['prize_' + k] };
+      started: !!d[k + '_run'], done: d[k + '_score'] != null, score: show ? d[k + '_score'] : null, level: show ? d[k + '_level'] : null, prize: d['prize_' + k] };
   };
   return {
-    id: d.id, status: d.resolved_at ? 'done' : !d.b ? 'open' : 'live', winner: d.winner,
+    id: d.id, public: !!d.public, status: d.resolved_at ? 'done' : !d.b ? 'open' : 'live', winner: d.winner,
     createdAt: d.created_at, expiresAt: d.expires_at, a: side('a'), b: side('b'),
     you: me === d.a ? 'a' : me && me === d.b ? 'b' : null,
   };
@@ -541,6 +542,21 @@ async function duelGet(req, env, address, id) {
   const d = await resolveDuel(env, await getDuel(env, id));
   if (!d) return fail(req, 404, 'no_duel', 'That duel was not found.');
   return json(req, { duel: await duelView(env, d, address) });
+}
+
+// the lobby: public duels nobody has accepted yet; scores stay hidden so nobody can cherry-pick a weak one
+async function openDuels(req, env, address) {
+  const { results } = await env.DB.prepare(
+    `SELECT d.id, d.a, d.a_score IS NOT NULL AS played, d.expires_at, p.nick, p.xp, p.squeeks, p.duel_wins, p.duel_losses
+     FROM duels d JOIN players p ON p.address = d.a
+     WHERE d.public = 1 AND d.b IS NULL AND d.resolved_at IS NULL AND d.expires_at > ? AND d.a != ?
+     ORDER BY played DESC, d.created_at DESC LIMIT 12`
+  ).bind(nowS(), address || '').all();
+  return json(req, { duels: results.map(r => ({
+    id: r.id, status: 'open', you: null, expiresAt: r.expires_at, played: !!r.played,
+    a: { id: r.a, address: short(r.a), nick: r.nick || null, holder: r.squeeks > 0, hamsterLevel: SIM.levelForXp(r.xp || 0), record: `${r.duel_wins}–${r.duel_losses}` },
+    b: null,
+  })) });
 }
 
 async function myDuels(req, env, address) {
@@ -651,6 +667,7 @@ export default {
       const address = await sessionAddress(req, env);
       if (req.method === 'GET' && path === '/daily') return daily(req, env, address);
       if (req.method === 'GET' && path === '/missions') return json(req, await missionsView(env, address));
+      if (req.method === 'GET' && path === '/duels/open') return openDuels(req, env, address);
       const duelPath = path.match(/^\/duels\/([0-9a-f]{10})$/);
       if (req.method === 'GET' && duelPath) return duelGet(req, env, address, duelPath[1]);
       if (!address) return fail(req, 401, 'signed_out', 'Sign in with your wallet first.');

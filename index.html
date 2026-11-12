@@ -168,6 +168,8 @@ canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 5 / 3; max-
 .duels li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: space-between; background: var(--soil); border: 1px solid var(--soil-3); border-radius: 10px; padding: 6px 10px; font-size: 13px; text-align: left; }
 .duels li.won { border-color: var(--seed); }
 .board .nm.champ { color: var(--seed); }
+.modes .dot.open { background: var(--soil-3); color: var(--cream); font-weight: 600; }
+.lobby-h { margin: 4px 0 0; font-size: 13px; text-align: left; width: 100%; }
 .modes .dot { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: #ec6a4f; color: #fff; font: 700 11px/18px var(--mono); }
 .duels li span { flex: 1 1 160px; }
 .duels li button { flex: none; }
@@ -1185,7 +1187,7 @@ const SIM = (() => {
 
   // ---------- duels ----------
   const duelParam = /^[0-9a-f]{10}$/.test(params.get('duel') || '') ? params.get('duel') : null;
-  let duels = [], duelSel = duelParam, duelLinked = null;
+  let duels = [], duelSel = duelParam, duelLinked = null, openList = [], duelPublic = load('cheekpouch.duelPublic') !== '0';
   const duelUrl = id => `${SITE}?duel=${id}`;
   const rivalOf = d => (d.you === 'b' ? d.a : d.b);
   const nameOf = x => (x ? x.nick || x.address : 'someone');
@@ -1193,6 +1195,7 @@ const SIM = (() => {
     if (!walletMode) return;
     try { if (duelParam) duelLinked = (await api('/duels/' + duelParam)).duel; } catch (e) { duelLinked = null; }
     try { duels = session ? (await api('/duels')).duels : []; } catch (e) {}
+    try { openList = (await api('/duels/open')).duels; } catch (e) { openList = []; }
     if (state === 'ready' || state === 'over') renderModeBody();
     renderInbox();
   }
@@ -1209,7 +1212,9 @@ const SIM = (() => {
   }
   function renderInbox() {
     const n = inboxCount(), tab = document.querySelector('.modes [data-mode="duel"]');
-    if (tab) tab.innerHTML = 'Duel' + (n ? ` <span class="dot" title="${n} duel${n === 1 ? '' : 's'} waiting for you">${n}</span>` : '');
+    const o = openList.length;
+    if (tab) tab.innerHTML = 'Duel' + (n ? ` <span class="dot" title="${n} duel${n === 1 ? '' : 's'} waiting for you">${n}</span>`
+      : o ? ` <span class="dot open" title="${o} open challenge${o === 1 ? '' : 's'}">${o} open</span>` : '');
     document.title = (n ? `(${n}) ` : '') + 'Cheek Pouch';
   }
   const duelOpen = d => d.status !== 'done' && Date.now() / 1000 < d.expiresAt;
@@ -1232,21 +1237,32 @@ const SIM = (() => {
       (d.status === 'done' && d.b ? `<button type="button" class="small" data-duel-rematch="${d.id}">Rematch</button>` : '');
     return `<li class="${won ? 'won' : ''}"><span>⚔ ${line}</span>${btns}</li>`;
   }
+  function hoursLeft(d) { const h = Math.max(0, Math.floor((d.expiresAt - Date.now() / 1000) / 3600)); return h >= 1 ? `${h} h left` : 'closing soon'; }
+  function openRow(d) {
+    const c = d.a;
+    return `<li><span>⚔ <b>${esc(nameOf(c))}</b>${c.holder ? ' ♛' : ''} · Lv ${c.hamsterLevel} · ${c.record} · ${d.played ? 'has played ✓' : 'not played yet'} · ${hoursLeft(d)}</span>` +
+      `<button type="button" class="small" data-duel-play="${d.id}">Accept</button></li>`;
+  }
   function duelBodyHtml() {
     const rules = `<p><b>Duel a friend:</b> you both get the same secret seed and <b>one try</b>. Highest score wins <span class="gold">150 XP</span> (a tie pays 75 each, everyone who plays gets 25). Duel wins unlock a medal, bandana, champion belt and ember fur.</p>`;
     if (!walletMode) return `<p>Duels need <b>cheek-pouch.live</b> and a connection to its server. Free play works here.</p>`;
     const L = duelLinked;
     const invite = L && !L.you
-      ? (canPlayDuel(L) ? `<div class="challenge">⚔ <b>${esc(nameOf(L.a))}</b> challenges you to a duel${L.a.done ? ` and scored <b>${L.a.score}</b>` : ''}. Press <b>Start run</b> to accept.</div>` : '<div class="challenge">That duel is already full or over. Start your own below.</div>')
+      ? (canPlayDuel(L) ? `<div class="challenge">⚔ <b>${esc(nameOf(L.a))}</b> challenges you to a duel${L.a.done ? ' and has played their go' : ''}. Press <b>Start run</b> to accept.</div>` : '<div class="challenge">That duel is already full or over. Start your own below.</div>')
       : '';
-    if (!session) return invite + rules + '<p><b>Sign in</b> with your wallet to start or accept a duel.</p>';
+    const open = openList.filter(d => !L || d.id !== L.id).slice(0, 5);
+    const lobby = open.length
+      ? `<p class="lobby-h"><b>Open challenges</b> · scores stay hidden until you accept</p><ul class="duels">${open.map(openRow).join('')}</ul>`
+      : '<p class="fine">No open challenges right now. Start one and it shows up here for everyone.</p>';
+    if (!session) return invite + rules + lobby + '<p><b>Sign in</b> with your wallet to start or accept a duel.</p>';
     const list = duels.slice(0, 4).map(duelRow).join('');
     setTimeout(() => { if (mode === 'duel' && !overlay.hidden) { markDuelsSeen(); renderInbox(); } });
-    return invite + rules + (list ? `<ul class="duels">${list}</ul>` : '') +
+    return invite + rules + lobby + (list ? `<p class="lobby-h"><b>Your duels</b></p><ul class="duels">${list}</ul>` : '') +
+      `<label class="check"><input type="checkbox" id="duelPublicBox" ${duelPublic ? 'checked' : ''}> List my new duels in Open challenges (untick for link-only)</label>` +
       `<p class="fine">${L && !L.you && canPlayDuel(L) ? '' : '<b>Start run</b> opens a new duel: play your go, then send the link. '}Leaving mid-run uses up your try. Prize XP is paid for 3 duels a day; duels close after 48 hours.</p>`;
   }
   function playableDuelId() {
-    const all = duelLinked ? [duelLinked, ...duels] : duels;
+    const all = [...(duelLinked ? [duelLinked] : []), ...duels, ...openList];
     const d = all.find(x => x.id === duelSel && canPlayDuel(x));
     return d ? d.id : null;
   }
@@ -1433,6 +1449,7 @@ const SIM = (() => {
     const cp = e.target.closest('[data-copy-duel]');
     if (cp) copyDuel(cp.dataset.copyDuel, cp);
   });
+  card.addEventListener('change', e => { if (e.target.id === 'duelPublicBox') { duelPublic = e.target.checked; store('cheekpouch.duelPublic', duelPublic ? '1' : '0'); } });
   card.addEventListener('change', e => { if (e.target.id === 'ghostBox') { ghostOn = e.target.checked; store('cheekpouch.ghost', ghostOn ? '1' : '0'); } });
   function introCard() {
     const ch = challenge ? `<div class="challenge">🐹 <b>${esc(challenge.by)}</b> challenges you to beat <b>${challenge.score}</b> on the Daily Burrow of ${fmtDay(challenge.day)}.</div>` : '';
@@ -1467,7 +1484,7 @@ const SIM = (() => {
     if (mode === 'duel') {
       try {
         let id = playableDuelId();
-        if (!id) { const c = await api('/duels', { method: 'POST' }); id = c.duel.id; duels.unshift(c.duel); }
+        if (!id) { const c = await api('/duels', { method: 'POST', body: { public: duelPublic } }); id = c.duel.id; duels.unshift(c.duel); }
         const r = await api('/runs', { method: 'POST', body: { mode: 'duel', duel: id } });
         Object.assign(run, { id: r.runId, day: r.day, duel: id, rival: r.rival });
         opts = { seed: r.seed, goldTicks: r.goldTicks, mult: 1 };
