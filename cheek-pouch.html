@@ -873,6 +873,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
     const btns = (canPlayDuel(d) ? `<button type="button" class="small" data-duel-play="${d.id}">Play</button>` : '') +
       (duelOpen(d) && !d.b ? `<button type="button" class="small" data-copy-duel="${d.id}">Copy link</button>` : '') +
       (d.status === 'done' && d.b ? `<button type="button" class="small" data-duel-rematch="${d.id}">Rematch</button>` : '');
+    if (d.public && d.status === 'open' && d.you === 'a') line += ' <i title="Shown in Open challenges">· listed publicly</i>';
     return `<li class="${won ? 'won' : ''}"><span>⚔ ${line}</span>${btns}</li>`;
   }
   function hoursLeft(d) { const h = Math.max(0, Math.floor((d.expiresAt - Date.now() / 1000) / 3600)); return h >= 1 ? `${h} h left` : 'closing soon'; }
@@ -889,9 +890,10 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       ? (canPlayDuel(L) ? `<div class="challenge">⚔ <b>${esc(nameOf(L.a))}</b> challenges you to a duel${L.a.done ? ' and has played their go' : ''}. Press <b>Start run</b> to accept.</div>` : '<div class="challenge">That duel is already full or over. Start your own below.</div>')
       : '';
     const open = openList.filter(d => !L || d.id !== L.id).slice(0, 5);
-    const lobby = open.length
-      ? `<p class="lobby-h"><b>Open challenges</b> · scores stay hidden until you accept</p><ul class="duels">${open.map(openRow).join('')}</ul>`
-      : '<p class="fine">No open challenges right now. Start one and it shows up here for everyone.</p>';
+    const mineListed = duels.filter(d => d.public && d.status === 'open' && d.you === 'a').length;
+    const lobby = `<p class="lobby-h"><b>Open challenges</b> · scores stay hidden until you accept</p>` + (open.length
+      ? `<ul class="duels">${open.map(openRow).join('')}</ul>`
+      : `<ul class="duels"><li><span>No one else has an open challenge right now.${mineListed ? ` Your ${mineListed === 1 ? 'duel is' : `${mineListed} duels are`} listed here for other players.` : ' Start one and it shows up here for everyone.'}</span></li></ul>`);
     if (!session) return invite + rules + lobby + '<p><b>Sign in</b> with your wallet to start or accept a duel.</p>';
     const list = duels.slice(0, 4).map(duelRow).join('');
     setTimeout(() => { if (mode === 'duel' && !overlay.hidden) { markDuelsSeen(); renderInbox(); } });
