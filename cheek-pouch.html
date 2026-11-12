@@ -1803,7 +1803,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       if (dance) ctx.rotate(Math.sin(fx.dance * 22) * .18);
       else if (moving && h.ground && !reduceMotion) ctx.rotate((keys.r ? 1 : -1) * .08);
       ctx.scale(h.face * sq * (rising ? .9 : 1), (rising ? 1.12 : 1) / sq);
-      if (ghostMode) ctx.globalAlpha = .35;
+      if (ghostMode) ctx.globalAlpha = Math.abs(h.x - game.s.ham.x) < 70 ? .06 : .16; // a faint hint, nearly gone when it overlaps you
       drawHamsterShape(ctx, { held: h.held.length, step: h.step, gold: h.held.includes('gold'), big: h.stretch > 0, jig: moving && h.held.length && !reduceMotion ? Math.sin(h.step * 2) * 1.6 : 0 }, eq);
       if (h.helmet && !ghostMode) {
         ctx.fillStyle = 'rgba(91,143,216,.95)'; ctx.beginPath(); ctx.ellipse(2, -42, 20, 11, 0, Math.PI, 0); ctx.fill();
@@ -1815,10 +1815,7 @@ kbd { font-family: var(--mono); font-size: 12px; background: var(--soil); border
       ctx.restore();
       ctx.globalAlpha = 1;
     }
-    if (ghostMode) {
-      pillText(x, y - 74, `${ghost.data.nick || ghost.data.address} ${s.score}`, '#f6ead7', 'rgba(130,207,224,.35)', '600 11px "JetBrains Mono", monospace', 'center');
-      return;
-    }
+    if (ghostMode) return; // its score lives in the corner pill, not over its head
     if (state === 'play' || state === 'paused') {
       const n = h.held.length, capN = game.cap(), full = n >= capN;
       pillText(x, y - 80, `${n}/${capN}`, full ? '#3b2410' : '#f6ead7', full ? '#f2c14e' : 'rgba(20,13,9,.75)', '600 13px "JetBrains Mono", monospace', 'center');
